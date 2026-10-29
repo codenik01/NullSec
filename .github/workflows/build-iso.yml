@@ -1,4 +1,4 @@
-```yaml
+
 name: build-iso
 
 on:
@@ -236,4 +236,3 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-```
