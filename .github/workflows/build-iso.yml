@@ -3,43 +3,156 @@ name: build-iso
 on:
   workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    paths:
+      - "kali-config/**"
+      - ".github/workflows/build-iso.yml"
+      - "build.sh"
+      - "check-packages.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nullsec-iso-build
+  cancel-in-progress: false
 
 jobs:
   iso:
-    runs-on: ubuntu-latest
+    name: Build NullSec ISO
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Free disk space
+      - name: Validate NullSec configuration
+        shell: bash
         run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
-          df -h /
+          set -euo pipefail
 
-      - name: Build NullSec ISO
+          CONFIG="kali-config/variant-nullsec"
+
+          if [[ ! -d "$CONFIG" ]]; then
+            echo "::error::Missing configuration directory: $CONFIG"
+            exit 1
+          fi
+
+          if [[ ! -d "$CONFIG/includes.chroot/usr/local/bin" ]]; then
+            echo "::error::Missing NullSec scripts directory."
+            exit 1
+          fi
+
+          if [[ ! -f "$CONFIG/config/hooks/live/10-nullsec.chroot" ]]; then
+            echo "::error::Missing 10-nullsec.chroot hook."
+            exit 1
+          fi
+
+          if [[ ! -f "$CONFIG/config/hooks/live/20-nullsec-trim.chroot" ]]; then
+            echo "::error::Missing 20-nullsec-trim.chroot hook."
+            exit 1
+          fi
+
+      - name: Fix NullSec script permissions
+        shell: bash
         run: |
-          docker run --privileged --rm \
-            -v "$PWD":/src \
-            -w /src \
-            kalilinux/kali-rolling bash -c '
-              set -e
+          set -euo pipefail
+
+          BIN="kali-config/variant-nullsec/includes.chroot/usr/local/bin"
+          HOOKS="kali-config/variant-nullsec/config/hooks/live"
+
+          # These files are shell commands and must be executable.
+          for script in ns ns-genmenu ns-menu ns-pack ns-power; do
+            if [[ -f "$BIN/$script" ]]; then
+              chmod +x "$BIN/$script"
+            else
+              echo "::error::Expected script not found: $BIN/$script"
+              exit 1
+            fi
+          done
+
+          # Ensure live-build can execute the hook scripts.
+          find "$HOOKS" -type f -name '*.hook.chroot' \
+            -exec chmod +x {} +
+
+      - name: Build ISO inside Kali container
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p out
+
+          docker pull kalilinux/kali-rolling
+
+          docker run \
+            --rm \
+            --privileged \
+            --volume "$GITHUB_WORKSPACE:/src" \
+            --workdir /src \
+            kalilinux/kali-rolling \
+            bash -lc '
+              set -Eeuo pipefail
+
+              export DEBIAN_FRONTEND=noninteractive
+
               apt-get update
-              apt-get install -y git live-build simple-cdd cdebootstrap curl devscripts sudo
-              git clone --depth 1 https://gitlab.com/kalilinux/build-scripts/live-build-config.git /lbc
-              cp -r /src/kali-config/variant-nullsec /lbc/kali-config/
+              apt-get install -y --no-install-recommends \
+                ca-certificates \
+                git \
+                live-build \
+                debootstrap \
+                xorriso \
+                squashfs-tools \
+                rsync \
+                cpio \
+                dosfstools \
+                mtools \
+                curl \
+                wget \
+                gpg
+
+              rm -rf /lbc
+
+              git clone --depth 1 \
+                https://gitlab.com/kalilinux/build-scripts/live-build-config.git \
+                /lbc
+
+              test -f /lbc/build.sh
+
+              mkdir -p /lbc/kali-config
+
+              rm -rf /lbc/kali-config/variant-nullsec
+
+              cp -a \
+                /src/kali-config/variant-nullsec \
+                /lbc/kali-config/variant-nullsec
+
               cd /lbc
+
+              chmod +x ./build.sh
+
               ./build.sh --variant nullsec
+
               mkdir -p /src/out
-              cp images/*.iso /src/out/
+
+              find images -maxdepth 1 -type f -name "*.iso" \
+                -exec cp -v {} /src/out/ \;
+
+              if ! find /src/out -maxdepth 1 -type f -name "*.iso" \
+                -print -quit | grep -q .; then
+                echo "ERROR: Build completed without producing an ISO."
+                exit 1
+              fi
+
+              echo "ISO build completed."
+              ls -lh /src/out/*.iso
             '
 
-      - name: Upload ISO artifact
+      - name: Upload NullSec ISO
         uses: actions/upload-artifact@v4
         with:
           name: nullsec-iso
           path: out/*.iso
           if-no-files-found: error
+          compression-level: 0
           retention-days: 7
