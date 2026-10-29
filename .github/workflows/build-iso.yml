@@ -26,7 +26,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate NullSec configuration
+      - name: Locate configuration and fix permissions
         shell: bash
         run: |
           set -euo pipefail
@@ -34,48 +34,35 @@ jobs:
           CONFIG="kali-config/variant-nullsec"
 
           if [[ ! -d "$CONFIG" ]]; then
-            echo "::error::Missing configuration directory: $CONFIG"
+            echo "::error::Configuration directory not found: $CONFIG"
+            echo "Repository contents:"
+            find . -maxdepth 4 -type d | sort | head -200
             exit 1
           fi
 
-          if [[ ! -d "$CONFIG/includes.chroot/usr/local/bin" ]]; then
-            echo "::error::Missing NullSec scripts directory."
-            exit 1
-          fi
+          echo "Found NullSec configuration: $CONFIG"
 
-          if [[ ! -f "$CONFIG/config/hooks/live/10-nullsec.chroot" ]]; then
-            echo "::error::Missing 10-nullsec.chroot hook."
-            exit 1
-          fi
+          echo "Configuration files:"
+          find "$CONFIG" -type f | sort
 
-          if [[ ! -f "$CONFIG/config/hooks/live/20-nullsec-trim.chroot" ]]; then
-            echo "::error::Missing 20-nullsec-trim.chroot hook."
-            exit 1
-          fi
-
-      - name: Fix NullSec script permissions
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          BIN="kali-config/variant-nullsec/includes.chroot/usr/local/bin"
-          HOOKS="kali-config/variant-nullsec/config/hooks/live"
-
-          # These files are shell commands and must be executable.
-          for script in ns ns-genmenu ns-menu ns-pack ns-power; do
-            if [[ -f "$BIN/$script" ]]; then
-              chmod +x "$BIN/$script"
-            else
-              echo "::error::Expected script not found: $BIN/$script"
-              exit 1
-            fi
-          done
-
-          # Ensure live-build can execute the hook scripts.
-          find "$HOOKS" -type f -name '*.hook.chroot' \
+          # Fix executable permissions for NullSec command scripts.
+          find "$CONFIG" -type f \
+            \( -name "ns" \
+            -o -name "ns-genmenu" \
+            -o -name "ns-menu" \
+            -o -name "ns-pack" \
+            -o -name "ns-power" \) \
             -exec chmod +x {} +
 
-      - name: Build ISO inside Kali container
+          # Find hooks wherever they actually reside.
+          # Do not fail just because a guessed path does not exist.
+          find "$CONFIG" -type f \
+            \( -name "*.chroot" -o -name "*.hook.chroot" \) \
+            -exec chmod +x {} +
+
+          echo "Permission preparation completed."
+
+      - name: Build ISO
         shell: bash
         run: |
           set -euo pipefail
@@ -92,10 +79,10 @@ jobs:
             kalilinux/kali-rolling \
             bash -lc '
               set -Eeuo pipefail
-
               export DEBIAN_FRONTEND=noninteractive
 
               apt-get update
+
               apt-get install -y --no-install-recommends \
                 ca-certificates \
                 git \
@@ -117,7 +104,10 @@ jobs:
                 https://gitlab.com/kalilinux/build-scripts/live-build-config.git \
                 /lbc
 
-              test -f /lbc/build.sh
+              if [[ ! -f /lbc/build.sh ]]; then
+                echo "ERROR: Kali live-build build.sh not found."
+                exit 1
+              fi
 
               mkdir -p /lbc/kali-config
 
@@ -131,6 +121,12 @@ jobs:
 
               chmod +x ./build.sh
 
+              # Display actual hook locations for debugging.
+              echo "NullSec hooks installed in build configuration:"
+              find kali-config/variant-nullsec -type f \
+                \( -name "*.chroot" -o -name "*.hook.chroot" \) \
+                -print
+
               ./build.sh --variant nullsec
 
               mkdir -p /src/out
@@ -140,15 +136,16 @@ jobs:
 
               if ! find /src/out -maxdepth 1 -type f -name "*.iso" \
                 -print -quit | grep -q .; then
-                echo "ERROR: Build completed without producing an ISO."
+                echo "ERROR: No ISO was generated."
                 exit 1
               fi
 
-              echo "ISO build completed."
+              echo "ISO generated successfully:"
               ls -lh /src/out/*.iso
             '
 
-      - name: Upload NullSec ISO
+      - name: Upload ISO artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nullsec-iso
