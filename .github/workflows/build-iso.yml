@@ -31,7 +31,7 @@ jobs:
               git clone --depth 1 https://gitlab.com/kalilinux/build-scripts/live-build-config.git /lbc
               cp -r /src/kali-config/variant-nullsec /lbc/kali-config/
               cd /lbc
-              ./build.sh --variant nullsec --verbose
+              ./build.sh --variant nullsec
               mkdir -p /src/out
               cp images/*.iso /src/out/
             '
