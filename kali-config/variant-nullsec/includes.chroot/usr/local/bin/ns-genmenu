@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# builds ~/.config/openbox/menu.xml from /usr/share/nullsec/tools.tsv
+T=/usr/share/nullsec/tools.tsv; OUT=${1:-$HOME/.config/openbox/menu.xml}
+{
+echo '<?xml version="1.0" encoding="UTF-8"?><openbox_menu xmlns="http://openbox.org/3.4/menu">'
+echo '<menu id="root-menu" label="nullsec">'
+echo '<item label="terminal"><action name="Execute"><command>alacritty</command></action></item>'
+echo '<item label="browser"><action name="Execute"><command>firefox-esr</command></action></item>'
+echo '<separator/>'
+for c in $(cut -f1 $T | sort -u); do
+  echo "<menu id=\"m-$c\" label=\"$c\">"
+  awk -F'\t' -v c="$c" '$1==c{printf "<item label=\"%s\"><action name=\"Execute\"><command>alacritty -e zsh -ic \"%s --help | head -40; exec zsh\"</command></action></item>\n",$2,$2}' $T
+  echo '</menu>'
+done
+echo '<separator/>'
+echo '<item label="lock"><action name="Execute"><command>i3lock -c 0a0a0a</command></action></item>'
+echo '<item label="reload menu"><action name="Reconfigure"/></item>'
+echo '<item label="exit"><action name="Exit"/></item>'
+echo '</menu></openbox_menu>'
+} > "$OUT"

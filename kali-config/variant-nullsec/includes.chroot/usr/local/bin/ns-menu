@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+T=/usr/share/nullsec/tools.tsv
+cat=$(cut -f1 $T | sort -u | rofi -dmenu -p "category") || exit 0
+row=$(awk -F'\t' -v c="$cat" '$1==c{printf "%-24s %s\n",$2,$3}' $T | rofi -dmenu -p "$cat") || exit 0
+cmd=$(awk '{print $1}' <<<"$row")
+exec alacritty -e zsh -ic "echo '\$ $cmd --help'; $cmd --help 2>&1 | head -40; exec zsh"

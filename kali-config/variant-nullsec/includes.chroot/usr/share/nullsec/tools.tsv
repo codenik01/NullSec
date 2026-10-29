@@ -1,0 +1,36 @@
+recon	nmap	Port/service scanner
+recon	masscan	Fast port scanner
+recon	amass	Subdomain enumeration
+recon	subfinder	Passive subdomains
+recon	httpx	HTTP probing
+recon	theHarvester	OSINT
+web	ffuf	Web fuzzer
+web	gobuster	Dir/DNS brute force
+web	nikto	Web server scanner
+web	nuclei	Template vuln scanner
+web	sqlmap	SQL injection
+web	burpsuite	Intercepting proxy
+network	bettercap	MITM framework
+network	responder	LLMNR/NBT-NS
+network	tcpdump	Packet capture
+network	tshark	Packet analysis
+network	socat	Socket relay
+ad	netexec	SMB/WinRM/LDAP
+ad	evil-winrm	WinRM shell
+ad	bloodhound-python	AD ingestor
+ad	impacket-secretsdump	Dump secrets
+exploit	msfconsole	Metasploit
+exploit	searchsploit	Exploit-DB search
+passwords	hashcat	GPU cracker
+passwords	john	John the Ripper
+passwords	hydra	Online brute force
+wireless	airmon-ng	Monitor mode
+wireless	airodump-ng	Wi-Fi capture
+wireless	hcxdumptool	Handshake/PMKID
+re	ghidra	Decompiler
+re	r2	radare2
+re	gdb	Debugger
+re	binwalk	Firmware analysis
+forensics	vol	Volatility 3
+forensics	foremost	File carving
+forensics	exiftool	Metadata

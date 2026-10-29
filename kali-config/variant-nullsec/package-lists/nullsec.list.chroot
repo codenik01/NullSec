@@ -1,0 +1,97 @@
+# base: Kali's own kernel, no custom kernel work
+kali-linux-core
+linux-image-amd64
+live-boot
+live-config
+network-manager
+# desktop: bare minimum
+xorg
+xserver-xorg-input-libinput
+lightdm
+lightdm-gtk-greeter
+i3-wm
+i3status
+i3lock
+rofi
+alacritty
+dunst
+feh
+picom
+fonts-jetbrains-mono
+zsh
+zsh-autosuggestions
+zsh-syntax-highlighting
+fzf
+tmux
+vim-nox
+firefox-esr
+git
+curl
+jq
+ripgrep
+htop
+nftables
+macchanger
+tor
+proxychains4
+openvpn
+wireguard-tools
+# recon
+nmap
+masscan
+amass
+subfinder
+httpx-toolkit
+whatweb
+dnsutils
+theharvester
+# web
+ffuf
+gobuster
+nikto
+nuclei
+sqlmap
+burpsuite
+# network / AD
+tcpdump
+tshark
+netcat-openbsd
+socat
+bettercap
+responder
+impacket-scripts
+netexec
+evil-winrm
+bloodhound.py
+# exploitation
+metasploit-framework
+exploitdb
+# passwords
+hydra
+john
+hashcat
+wordlists
+seclists
+# wireless
+aircrack-ng
+hcxtools
+hcxdumptool
+# reversing / pwn / forensics
+gdb
+radare2
+binwalk
+python3-pwntools
+ghidra
+sleuthkit
+foremost
+libimage-exiftool-perl
+volatility3
+# VM friendly
+open-vm-tools
+spice-vdagent
+qemu-guest-agent
+virtualbox-guest-x11
+# BlackArch-style session (second option at login)
+openbox
+tint2
+obconf

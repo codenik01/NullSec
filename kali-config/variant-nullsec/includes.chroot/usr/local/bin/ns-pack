@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# ns-pack list | ns-pack add <pack|package> | ns-pack rm <package>
+P=/usr/share/nullsec/packs.tsv
+case "$1" in
+  list) column -t -s$'\t' $P;;
+  add)  pkg=$(awk -F'\t' -v n="$2" '$1==n{print $2}' $P); sudo apt-get install -y --no-install-recommends "${pkg:-$2}";;
+  rm)   sudo apt-get purge -y "$2" && sudo apt-get autoremove -y;;
+  *)    echo "usage: ns-pack list | add <pack|pkg> | rm <pkg>";;
+esac

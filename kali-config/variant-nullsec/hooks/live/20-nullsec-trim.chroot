@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+mkdir -p /etc/skel/.config/openbox
+cp /etc/xdg/openbox/rc.xml /etc/skel/.config/openbox/rc.xml 2>/dev/null && \
+  sed -i 's#<name>[^<]*</name>\(\s*<titleLayout>\)#<name>nullsec</name>\1#' /etc/skel/.config/openbox/rc.xml || true
+sed -i '0,/<theme>/{/<theme>/,/<\/theme>/ s#<name>.*</name>#<name>nullsec</name>#}' /etc/skel/.config/openbox/rc.xml 2>/dev/null || true
+/usr/local/bin/ns-genmenu /etc/skel/.config/openbox/menu.xml
+cp -rT /etc/skel /home/kali && chown -R kali:kali /home/kali || true
+# trim size: docs, man pages, extra locales
+rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /var/cache/apt/archives/* /var/lib/apt/lists/*
+find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' ! -name locale.alias -exec rm -rf {} + 2>/dev/null || true

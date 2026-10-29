@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# terminal tool browser: ns [filter]
+T=/usr/share/nullsec/tools.tsv
+sel=$(awk -F'\t' '{printf "%-10s %-22s %s\n",$1,$2,$3}' $T | fzf --query="${1:-}" --prompt="nullsec> " --reverse --height=60%) || exit 0
+c=$(awk '{print $2}' <<<"$sel"); echo "\$ $c"; command -v "$c" >/dev/null && "$c" --help 2>&1 | head -40
