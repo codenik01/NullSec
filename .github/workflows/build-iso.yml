@@ -1,3 +1,4 @@
+```yaml
 name: build-iso
 
 on:
@@ -35,17 +36,16 @@ jobs:
 
           if [[ ! -d "$CONFIG" ]]; then
             echo "::error::Configuration directory not found: $CONFIG"
-            echo "Repository contents:"
+            echo "Repository directories:"
             find . -maxdepth 4 -type d | sort | head -200
             exit 1
           fi
 
           echo "Found NullSec configuration: $CONFIG"
-
           echo "Configuration files:"
           find "$CONFIG" -type f | sort
 
-          # Fix executable permissions for NullSec command scripts.
+          # Make NullSec command scripts executable.
           find "$CONFIG" -type f \
             \( -name "ns" \
             -o -name "ns-genmenu" \
@@ -54,15 +54,14 @@ jobs:
             -o -name "ns-power" \) \
             -exec chmod +x {} +
 
-          # Find hooks wherever they actually reside.
-          # Do not fail just because a guessed path does not exist.
+          # Make custom live-build hooks executable.
           find "$CONFIG" -type f \
             \( -name "*.chroot" -o -name "*.hook.chroot" \) \
             -exec chmod +x {} +
 
           echo "Permission preparation completed."
 
-      - name: Build ISO
+      - name: Build NullSec ISO
         shell: bash
         run: |
           set -euo pipefail
@@ -81,6 +80,10 @@ jobs:
               set -Eeuo pipefail
               export DEBIAN_FRONTEND=noninteractive
 
+              echo "========================================"
+              echo "Installing live-build dependencies"
+              echo "========================================"
+
               apt-get update
 
               apt-get install -y --no-install-recommends \
@@ -98,6 +101,10 @@ jobs:
                 wget \
                 gpg
 
+              echo "========================================"
+              echo "Preparing Kali live-build configuration"
+              echo "========================================"
+
               rm -rf /lbc
 
               git clone --depth 1 \
@@ -106,6 +113,11 @@ jobs:
 
               if [[ ! -f /lbc/build.sh ]]; then
                 echo "ERROR: Kali live-build build.sh not found."
+                exit 1
+              fi
+
+              if [[ ! -d /src/kali-config/variant-nullsec ]]; then
+                echo "ERROR: NullSec configuration is missing."
                 exit 1
               fi
 
@@ -121,35 +133,107 @@ jobs:
 
               chmod +x ./build.sh
 
-              # Display actual hook locations for debugging.
-              echo "NullSec hooks installed in build configuration:"
-              find kali-config/variant-nullsec -type f \
-                \( -name "*.chroot" -o -name "*.hook.chroot" \) \
-                -print
+              echo "========================================"
+              echo "NullSec configuration and hooks"
+              echo "========================================"
+
+              find kali-config/variant-nullsec -type f | sort
+
+              echo "========================================"
+              echo "Starting NullSec ISO build"
+              echo "========================================"
 
               ./build.sh --variant nullsec
 
-              mkdir -p /src/out
+              echo "========================================"
+              echo "Collecting build artifacts"
+              echo "========================================"
 
-              find images -maxdepth 1 -type f -name "*.iso" \
-                -exec cp -v {} /src/out/ \;
-
-              if ! find /src/out -maxdepth 1 -type f -name "*.iso" \
-                -print -quit | grep -q .; then
-                echo "ERROR: No ISO was generated."
+              # Kali live-build writes generated artifacts to output/,
+              # not to an images/ directory.
+              if [[ ! -d /lbc/output ]]; then
+                echo "ERROR: Build output directory /lbc/output was not created."
+                echo "Available build directories:"
+                find /lbc -maxdepth 2 -type d | sort | head -200
                 exit 1
               fi
 
-              echo "ISO generated successfully:"
-              ls -lh /src/out/*.iso
+              echo "Contents of /lbc/output:"
+              ls -lah /lbc/output
+
+              # Copy the ISO, build log, and checksum when available.
+              find /lbc/output -maxdepth 1 -type f \
+                \( -name "*.iso" \
+                -o -name "*.iso.log" \
+                -o -name "*.iso.sha512sum" \
+                -o -name "*.sha512sum" \) \
+                -exec cp -v {} /src/out/ \;
+
+              # The ISO is required for a successful build.
+              if ! find /src/out -maxdepth 1 -type f \
+                -name "*.iso" -print -quit | grep -q .; then
+                echo "ERROR: ISO was not copied to /src/out."
+                echo "Build output directory contents:"
+                ls -lah /lbc/output
+                exit 1
+              fi
+
+              echo "========================================"
+              echo "ISO build completed successfully"
+              echo "========================================"
+
+              ls -lh /src/out/
+
+              # Generate a checksum if Kali did not provide one.
+              ISO_PATH="$(find /src/out -maxdepth 1 -type f \
+                -name "*.iso" -print -quit)"
+
+              if ! find /src/out -maxdepth 1 -type f \
+                \( -name "*.iso.sha512sum" -o -name "*.sha512sum" \) \
+                -print -quit | grep -q .; then
+                (
+                  cd /src/out
+                  sha512sum "$(basename "$ISO_PATH")" \
+                    > "$(basename "$ISO_PATH").sha512sum"
+                )
+              fi
+
+              echo "Final artifact files:"
+              ls -lh /src/out/
             '
 
-      - name: Upload ISO artifact
+      - name: Verify ISO artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Checking generated ISO..."
+
+          ISO_COUNT="$(find out -maxdepth 1 -type f -name "*.iso" | wc -l)"
+
+          if [[ "$ISO_COUNT" -lt 1 ]]; then
+            echo "::error::No ISO found in out/."
+            ls -lah out/
+            exit 1
+          fi
+
+          echo "Generated ISO:"
+          ls -lh out/*.iso
+
+          echo "Available checksums and logs:"
+          find out -maxdepth 1 -type f \
+            \( -name "*.sha512sum" -o -name "*.iso.log" \) \
+            -print
+
+          echo "Artifact verification passed."
+
+      - name: Upload NullSec ISO
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: nullsec-iso
-          path: out/*.iso
+          path: out/*
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
+```
