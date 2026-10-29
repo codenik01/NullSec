@@ -85,7 +85,6 @@ ghidra
 sleuthkit
 foremost
 libimage-exiftool-perl
-volatility3
 # VM friendly
 open-vm-tools
 spice-vdagent
