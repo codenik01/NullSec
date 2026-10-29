@@ -1,0 +1,45 @@
+name: build-iso
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  iso:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
+          df -h /
+
+      - name: Build NullSec ISO
+        run: |
+          docker run --privileged --rm \
+            -v "$PWD":/src \
+            -w /src \
+            kalilinux/kali-rolling bash -c '
+              set -e
+              apt-get update
+              apt-get install -y git live-build simple-cdd cdebootstrap curl devscripts sudo
+              git clone --depth 1 https://gitlab.com/kalilinux/build-scripts/live-build-config.git /lbc
+              cp -r /src/kali-config/variant-nullsec /lbc/kali-config/
+              cd /lbc
+              ./build.sh --variant nullsec --verbose
+              mkdir -p /src/out
+              cp images/*.iso /src/out/
+            '
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nullsec-iso
+          path: out/*.iso
+          if-no-files-found: error
+          retention-days: 7
