@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# ns-run <cmd> [installer-spec]: show help; offer install when missing
+cmd=$1; spec=${2:-apt:$1}; export PATH="$PATH:$HOME/.local/bin"
+if ! command -v "$cmd" >/dev/null 2>&1; then
+  printf '%s is not installed. install via "%s"? [y/N] ' "$cmd" "$spec"; read -r a
+  [ "$a" = y ] && ns-install "$spec" || { echo "not installed"; read -r -p "enter"; exit 1; }
+fi
+echo "\$ $cmd --help"; "$cmd" --help 2>&1 | head -40
+exec zsh

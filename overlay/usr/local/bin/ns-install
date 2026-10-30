@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# ns-install <name|apt:pkg>  -- installs tools Ubuntu's repos don't ship (needs internet)
+set -e
+S=""; [ "$(id -u)" -ne 0 ] && S=sudo
+A=$(dpkg --print-architecture); case $A in amd64) GA=amd64; GB=x86_64;; arm64) GA=arm64; GB=aarch64;; esac
+apt_i() { $S apt-get update -qq; $S apt-get install -y --no-install-recommends "$@"; }
+ghbin() { # ghbin owner/repo binary
+  apt_i curl jq unzip ca-certificates >/dev/null
+  url=$(curl -fsSL "https://api.github.com/repos/$1/releases/latest" | jq -r --arg a "$GA" --arg b "$GB" \
+    '[.assets[]|select(.name|test("linux";"i"))|select(.name|test($a+"|"+$b;"i"))|select(.name|test("\\.(zip|tar\\.gz)$"))|select(.name|test("sbom|sig|checksum|musl";"i")|not)][0].browser_download_url')
+  [ -n "$url" ] && [ "$url" != null ] || { echo "no release asset found for $1/$A"; exit 1; }
+  t=$(mktemp -d); curl -fsSL "$url" -o "$t/a"; case $url in *.zip) unzip -q "$t/a" -d "$t";; *) tar xzf "$t/a" -C "$t";; esac
+  f=$(find "$t" -type f -name "$2" | head -1); [ -n "$f" ] || { echo "binary $2 not in archive"; exit 1; }
+  $S install -m755 "$f" /usr/local/bin/$2; rm -rf "$t"; echo "installed $2"
+}
+gitapp() { # gitapp url dir launcher-command-line name
+  apt_i git ca-certificates >/dev/null; [ -d "/opt/$2" ] || $S git clone --depth 1 "$1" "/opt/$2"
+  printf '#!/bin/sh\nexec %s "$@"\n' "$3" | $S tee /usr/local/bin/$4 >/dev/null; $S chmod +x /usr/local/bin/$4; echo "installed $4"
+}
+case "$1" in
+  apt:*) apt_i "${1#apt:}";;
+  subfinder) ghbin projectdiscovery/subfinder subfinder;;
+  httpx) ghbin projectdiscovery/httpx httpx;;
+  nuclei) ghbin projectdiscovery/nuclei nuclei;;
+  amass) ghbin owasp-amass/amass amass;;
+  nikto) apt_i perl; gitapp https://github.com/sullo/nikto nikto "perl /opt/nikto/program/nikto.pl" nikto;;
+  responder) apt_i python3; gitapp https://github.com/lgandx/Responder responder "python3 /opt/responder/Responder.py" responder;;
+  exploitdb) gitapp https://gitlab.com/exploit-database/exploitdb.git exploitdb "/opt/exploitdb/searchsploit" searchsploit;;
+  netexec) apt_i pipx; pipx install netexec; echo 'run: nxc (add ~/.local/bin to PATH if needed)';;
+  impacket) apt_i pipx; pipx install impacket;;
+  bloodhound) apt_i pipx; pipx install bloodhound;;
+  volatility3) apt_i pipx; pipx install volatility3;;
+  evil-winrm) apt_i ruby ruby-dev build-essential; $S gem install evil-winrm;;
+  seclists) apt_i git ca-certificates; $S git clone --depth 1 https://github.com/danielmiessler/SecLists /usr/share/seclists;;
+  firefox) apt_i wget gnupg ca-certificates; $S install -d -m755 /etc/apt/keyrings
+    wget -qO- https://packages.mozilla.org/apt/repo-signing-key.gpg | $S tee /etc/apt/keyrings/packages.mozilla.org.asc >/dev/null
+    echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" | $S tee /etc/apt/sources.list.d/mozilla.list >/dev/null
+    printf 'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000\n' | $S tee /etc/apt/preferences.d/mozilla >/dev/null
+    apt_i firefox;;
+  metasploit) apt_i curl gnupg; curl -fsSL https://raw.githubusercontent.com/rapid7/metasploit-omnibus/master/config/templates/metasploit-framework-wrappers/msfupdate.erb -o /tmp/msfinstall; chmod +x /tmp/msfinstall; $S /tmp/msfinstall;;
+  ghidra) apt_i openjdk-21-jdk curl jq unzip ca-certificates
+    url=$(curl -fsSL https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest | jq -r '.assets[0].browser_download_url')
+    t=$(mktemp -d); curl -fsSL "$url" -o $t/g.zip; $S unzip -q $t/g.zip -d /opt; $S ln -sf /opt/ghidra_*/ghidraRun /usr/local/bin/ghidra; rm -rf $t;;
+  *) echo "unknown installer: $1"; exit 1;;
+esac

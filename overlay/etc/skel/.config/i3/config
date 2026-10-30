@@ -1,0 +1,89 @@
+set $mod Mod1
+font pango:JetBrains Mono 10
+default_border pixel 1
+default_floating_border pixel 1
+hide_edge_borders smart
+focus_follows_mouse no
+
+# class                 border   bg       text     indicator child_border
+client.focused          #e5484d  #0a0a0a  #c8c8c8  #e5484d   #e5484d
+client.focused_inactive #1c1c1c  #0a0a0a  #5a5a5a  #1c1c1c   #1c1c1c
+client.unfocused        #1c1c1c  #0a0a0a  #5a5a5a  #1c1c1c   #1c1c1c
+client.urgent           #e5484d  #e5484d  #0a0a0a  #e5484d   #e5484d
+
+bindsym $mod+Return exec alacritty
+bindsym $mod+d exec rofi -show run
+bindsym $mod+t exec ns-menu
+bindsym $mod+b exec firefox
+bindsym $mod+Shift+q kill
+bindsym $mod+Shift+x exec i3lock -c 0a0a0a
+bindsym $mod+Shift+r restart
+bindsym $mod+Shift+e exec ns-power
+bindsym $mod+f fullscreen toggle
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+h split h
+bindsym $mod+v split v
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
+bindsym $mod+Left focus left
+bindsym $mod+Right focus right
+bindsym $mod+Up focus up
+bindsym $mod+Down focus down
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Right move right
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Down move down
+floating_modifier $mod
+
+set $ws1 "1 recon"
+set $ws2 "2 web"
+set $ws3 "3 exploit"
+set $ws4 "4 post"
+set $ws5 "5 notes"
+set $ws6 "6"
+bindsym $mod+1 workspace $ws1
+bindsym $mod+2 workspace $ws2
+bindsym $mod+3 workspace $ws3
+bindsym $mod+4 workspace $ws4
+bindsym $mod+5 workspace $ws5
+bindsym $mod+6 workspace $ws6
+bindsym $mod+Shift+1 move container to workspace $ws1
+bindsym $mod+Shift+2 move container to workspace $ws2
+bindsym $mod+Shift+3 move container to workspace $ws3
+bindsym $mod+Shift+4 move container to workspace $ws4
+bindsym $mod+Shift+5 move container to workspace $ws5
+bindsym $mod+Shift+6 move container to workspace $ws6
+
+mode "resize" {
+  bindsym Left resize shrink width 5 px or 5 ppt
+  bindsym Right resize grow width 5 px or 5 ppt
+  bindsym Up resize shrink height 5 px or 5 ppt
+  bindsym Down resize grow height 5 px or 5 ppt
+  bindsym Escape mode "default"
+}
+bindsym $mod+r mode "resize"
+
+bar {
+  status_command i3status
+  position top
+  separator_symbol " | "
+  workspace_min_width 28
+  colors {
+    background #0a0a0a
+    statusline #c8c8c8
+    separator  #3a3a3a
+    focused_workspace  #e5484d #0a0a0a #e5484d
+    active_workspace   #1c1c1c #0a0a0a #c8c8c8
+    inactive_workspace #0a0a0a #0a0a0a #5a5a5a
+    urgent_workspace   #e5484d #e5484d #0a0a0a
+  }
+}
+
+exec_always --no-startup-id sh -c 'feh --bg-fill /usr/share/backgrounds/nullsec.png || xsetroot -solid "#0a0a0a"'
+exec --no-startup-id dunst
+
+# Super duplicates of the essentials (Alt is $mod because VMs/hosts often swallow Super)
+bindsym Mod4+Return exec alacritty
+bindsym Mod4+d exec rofi -show run
+bindsym Mod4+t exec ns-menu
+bindsym Control+Mod1+t exec alacritty

@@ -1,0 +1,57 @@
+rounded = 0
+border_width = 0
+background_color = #0a0a0a 100
+border_color = #1c1c1c 100
+
+panel_items = PPPTSC
+panel_position = top center horizontal
+panel_size = 100% 26
+panel_margin = 0 0
+panel_padding = 4 0 4
+panel_background_id = 1
+wm_menu = 1
+taskbar_mode = single_desktop
+taskbar_padding = 0 0 4
+task_text = 1
+task_maximum_size = 180 26
+task_padding = 6 0 6
+task_font = JetBrains Mono 9
+task_font_color = #5a5a5a 100
+task_active_font_color = #e5484d 100
+task_background_id = 0
+task_active_background_id = 0
+systray_padding = 4 0 4
+systray_background_id = 0
+time1_format = %a %d %b %H:%M
+time1_font = JetBrains Mono 9
+clock_font_color = #c8c8c8 100
+clock_padding = 6 0
+clock_background_id = 0
+
+button = new
+button_text = [ tools ]
+button_font = JetBrains Mono 9
+button_font_color = #e5484d 100
+button_font_color_over = #ffffff 100
+button_padding = 6 0 4
+button_background_id = 0
+button_lclick_command = ns-menu
+button_rclick_command = rofi -show run
+
+button = new
+button_text = [ term ]
+button_font = JetBrains Mono 9
+button_font_color = #c8c8c8 100
+button_font_color_over = #e5484d 100
+button_padding = 6 0 4
+button_background_id = 0
+button_lclick_command = alacritty
+
+button = new
+button_text = [ power ]
+button_font = JetBrains Mono 9
+button_font_color = #5a5a5a 100
+button_font_color_over = #e5484d 100
+button_padding = 6 0 4
+button_background_id = 0
+button_lclick_command = ns-power

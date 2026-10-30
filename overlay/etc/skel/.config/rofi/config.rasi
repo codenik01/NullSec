@@ -1,0 +1,2 @@
+configuration { show-icons: false; }
+@theme "nullsec"

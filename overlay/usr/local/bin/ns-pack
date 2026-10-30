@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# ns-pack list | add <name|apt:pkg|any-apt-package> | rm <pkg>
+case "$1" in
+  list) echo "installers: subfinder httpx nuclei amass nikto responder exploitdb netexec impacket bloodhound volatility3 evil-winrm seclists firefox metasploit ghidra"; echo "or: ns-pack add apt:<package>";;
+  add)  ns-install "$2";;
+  rm)   sudo apt-get purge -y "$2" && sudo apt-get autoremove -y;;
+  *)    echo "usage: ns-pack list | add <name|apt:pkg> | rm <pkg>";;
+esac

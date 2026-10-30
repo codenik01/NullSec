@@ -1,0 +1,11 @@
+systemd-sysv sudo ca-certificates curl wget git less procps iproute2 iputils-ping locales dbus-x11 libpam-systemd polkitd
+casper initramfs-tools linux-image-generic
+network-manager network-manager-gnome network-manager-openvpn
+xserver-xorg-core xserver-xorg-input-libinput xserver-xorg-video-fbdev xserver-xorg-video-vmware xserver-xorg-video-qxl xinit libgl1-mesa-dri
+x11-xserver-utils x11-xkb-utils xkb-data xinput kbd console-setup keyboard-configuration xterm
+lightdm lightdm-gtk-greeter openbox tint2 i3-wm i3status i3lock rofi alacritty dunst feh fonts-jetbrains-mono adwaita-icon-theme
+zsh zsh-autosuggestions zsh-syntax-highlighting fzf tmux vim-tiny jq ripgrep htop python3-pip pipx
+open-vm-tools open-vm-tools-desktop spice-vdagent qemu-guest-agent virtualbox-guest-utils virtualbox-guest-x11
+nftables macchanger proxychains4 openvpn wireguard-tools dnsutils netcat-openbsd socat tcpdump tshark
+nmap masscan ffuf gobuster whatweb sqlmap hydra john hashcat aircrack-ng hcxtools hcxdumptool bettercap
+gdb radare2 binwalk foremost libimage-exiftool-perl python3-pwntools python3-impacket

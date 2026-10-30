@@ -1,0 +1,12 @@
+* { bg: #0a0a0a; fg: #c8c8c8; ac: #e5484d; font: "JetBrains Mono 11";
+    background-color: @bg; text-color: @fg; border-color: @ac; }
+window { width: 560px; border: 1px; padding: 0; }
+mainbox { padding: 10px; border: 0; }
+inputbar { padding: 6px; border: 0; children: [prompt, entry]; }
+prompt { text-color: @ac; padding: 0 8px 0 0; }
+entry { text-color: @fg; }
+listview { lines: 12; scrollbar: false; border: 0; padding: 6px 0 0 0; }
+element { padding: 4px 6px; border: 0; }
+element-text { background-color: inherit; text-color: inherit; }
+element normal.normal, element alternate.normal, element normal.active, element alternate.active, element normal.urgent, element alternate.urgent { background-color: @bg; text-color: @fg; }
+element selected.normal, element selected.active, element selected.urgent { background-color: @ac; text-color: @bg; }

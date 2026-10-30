@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+T=/usr/share/nullsec/tools.tsv
+c=$(cut -f1 $T | sort -u | rofi -dmenu -p "category") || exit 0
+row=$(awk -F'\t' -v c="$c" '$1==c{printf "%-22s %s\n",$2,$3}' $T | rofi -dmenu -p "$c") || exit 0
+cmd=$(awk '{print $1}' <<<"$row"); pkg=$(awk -F'\t' -v x="$cmd" '$2==x{print $4}' $T | head -1)
+exec alacritty -e ns-run "$cmd" "$pkg"

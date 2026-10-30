@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# builds the Openbox right-click menu from tools.tsv
+T=/usr/share/nullsec/tools.tsv; OUT=${1:-$HOME/.config/openbox/menu.xml}
+{
+echo '<?xml version="1.0" encoding="UTF-8"?><openbox_menu xmlns="http://openbox.org/3.4/menu">'
+echo '<menu id="root-menu" label="nullsec">'
+echo '<item label="terminal"><action name="Execute"><command>alacritty</command></action></item>'
+echo '<item label="browser"><action name="Execute"><command>firefox-esr</command></action></item>'
+echo '<item label="run..."><action name="Execute"><command>rofi -show run</command></action></item>'
+echo '<separator/>'
+for c in $(cut -f1 $T | sort -u); do
+  echo "<menu id=\"m-$c\" label=\"$c\">"
+  awk -F'\t' -v c="$c" '$1==c{printf "<item label=\"%s\"><action name=\"Execute\"><command>alacritty -e ns-run %s %s</command></action></item>\n",$2,$2,$4}' $T
+  echo '</menu>'
+done
+echo '<separator/>'
+echo '<item label="diagnose"><action name="Execute"><command>alacritty -e ns-diag</command></action></item>'
+echo '<item label="install more tools"><action name="Execute"><command>alacritty -e ns-pack list</command></action></item>'
+echo '<item label="lock"><action name="Execute"><command>i3lock -c 0a0a0a</command></action></item>'
+echo '<item label="power"><action name="Execute"><command>ns-power</command></action></item>'
+echo '</menu></openbox_menu>'
+} > "$OUT"

@@ -1,0 +1,37 @@
+recon	nmap	Port/service scanner	apt:nmap
+recon	masscan	Fast port scanner	apt:masscan
+recon	subfinder	Passive subdomains	subfinder
+recon	httpx	HTTP probing	httpx
+recon	amass	Subdomain enumeration	amass
+web	ffuf	Web fuzzer	apt:ffuf
+web	gobuster	Dir/DNS brute force	apt:gobuster
+web	whatweb	Web fingerprint	apt:whatweb
+web	sqlmap	SQL injection	apt:sqlmap
+web	nikto	Web scanner	nikto
+web	nuclei	Template scanner	nuclei
+web	firefox	Browser (Mozilla repo)	firefox
+network	bettercap	MITM framework	apt:bettercap
+network	tcpdump	Packet capture	apt:tcpdump
+network	tshark	Packet analysis	apt:tshark
+network	socat	Socket relay	apt:socat
+network	responder	LLMNR poisoner	responder
+ad	nxc	NetExec SMB/WinRM/LDAP	netexec
+ad	evil-winrm	WinRM shell	evil-winrm
+ad	bloodhound-python	AD ingestor	bloodhound
+ad	secretsdump.py	Impacket secretsdump	impacket
+exploit	msfconsole	Metasploit	metasploit
+exploit	searchsploit	Exploit-DB	exploitdb
+passwords	hashcat	GPU/CPU cracker	apt:hashcat
+passwords	john	John the Ripper	apt:john
+passwords	hydra	Online brute force	apt:hydra
+wireless	airmon-ng	Monitor mode	apt:aircrack-ng
+wireless	airodump-ng	Wi-Fi capture	apt:aircrack-ng
+wireless	hcxdumptool	Handshake capture	apt:hcxdumptool
+re	r2	radare2	apt:radare2
+re	gdb	Debugger	apt:gdb
+re	binwalk	Firmware analysis	apt:binwalk
+re	ghidra	Decompiler	ghidra
+forensics	vol	Volatility 3	volatility3
+forensics	foremost	File carving	apt:foremost
+forensics	exiftool	Metadata	apt:libimage-exiftool-perl
+data	seclists	Wordlists (/usr/share/seclists)	seclists

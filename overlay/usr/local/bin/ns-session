@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# sudo ns-session openbox|i3   (takes effect after logout)
+[ "$1" = openbox ] || [ "$1" = i3 ] || { echo "usage: sudo ns-session openbox|i3"; exit 1; }
+sed -i "s/^user-session=.*/user-session=$1/" /etc/lightdm/lightdm.conf.d/99-nullsec.conf && echo "session set to $1; log out to apply"
