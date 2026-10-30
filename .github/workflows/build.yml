@@ -1,24 +1,48 @@
 name: build-iso
-on: { workflow_dispatch: {}, push: { tags: ['v*'] } }
-permissions: { contents: write }
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
 jobs:
   iso:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { arch: amd64, runner: ubuntu-latest }
-          - { arch: arm64, runner: ubuntu-24.04-arm }
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+
       - name: free disk
-        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache || true; df -h /
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache || true
+          df -h /
+
+      - name: make scripts executable
+        run: chmod +x build-iso.sh overlay/usr/local/bin/*
+
       - name: build
-        run: sudo ./build-iso.sh ${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
-        with: { name: nullsec-${{ matrix.arch }}, path: out/*.iso, compression-level: 0 }
+        run: sudo bash ./build-iso.sh ${{ matrix.arch }}
+
+      - name: upload iso
+        uses: actions/upload-artifact@v4
+        with:
+          name: nullsec-${{ matrix.arch }}
+          path: out/*.iso
+          compression-level: 0
+
       - name: release (tags only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
-        with: { files: out/*.iso }
+        with:
+          files: out/*.iso
