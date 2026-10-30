@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <resistance><strength>10</strength><screen_edge_strength>20</screen_edge_strength></resistance>
+  <focus><focusNew>yes</focusNew><followMouse>no</followMouse><focusLast>yes</focusLast><underMouse>no</underMouse><focusDelay>200</focusDelay><raiseOnFocus>no</raiseOnFocus></focus>
+  <placement><policy>Smart</policy><center>yes</center><monitor>Primary</monitor><primaryMonitor>1</primaryMonitor></placement>
+  <theme><name>nullsec</name><titleLayout>NLIMC</titleLayout><keepBorder>yes</keepBorder><animateIconify>no</animateIconify></theme>
+  <desktops><number>5</number><firstdesk>1</firstdesk><names><name>recon</name><name>web</name><name>exploit</name><name>post</name><name>notes</name></names><popupTime>500</popupTime></desktops>
+  <keyboard>
+    <chainQuitKey>C-g</chainQuitKey>
+    <keybind key="A-Return"><action name="Execute"><command>alacritty</command></action></keybind>
+    <keybind key="W-Return"><action name="Execute"><command>alacritty</command></action></keybind>
+    <keybind key="C-A-t"><action name="Execute"><command>alacritty</command></action></keybind>
+    <keybind key="A-d"><action name="Execute"><command>rofi -show run</command></action></keybind>
+    <keybind key="W-d"><action name="Execute"><command>rofi -show run</command></action></keybind>
+    <keybind key="A-t"><action name="Execute"><command>ns-menu</command></action></keybind>
+    <keybind key="W-t"><action name="Execute"><command>ns-menu</command></action></keybind>
+    <keybind key="A-b"><action name="Execute"><command>firefox-esr</command></action></keybind>
+    <keybind key="A-S-e"><action name="Execute"><command>ns-power</command></action></keybind>
+    <keybind key="A-S-x"><action name="Execute"><command>i3lock -c 0a0a0a</command></action></keybind>
+    <keybind key="A-S-q"><action name="Close"/></keybind>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="A-f"><action name="ToggleMaximize"/></keybind>
+    <keybind key="A-Tab"><action name="NextWindow"/></keybind>
+    <keybind key="A-1"><action name="GoToDesktop"><to>1</to></action></keybind>
+    <keybind key="A-2"><action name="GoToDesktop"><to>2</to></action></keybind>
+    <keybind key="A-3"><action name="GoToDesktop"><to>3</to></action></keybind>
+    <keybind key="A-4"><action name="GoToDesktop"><to>4</to></action></keybind>
+    <keybind key="A-5"><action name="GoToDesktop"><to>5</to></action></keybind>
+  </keyboard>
+  <mouse>
+    <dragThreshold>1</dragThreshold><doubleClickTime>500</doubleClickTime><screenEdgeWarpTime>0</screenEdgeWarpTime>
+    <context name="Frame">
+      <mousebind button="A-Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="A-Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="A-Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="A-Right" action="Drag"><action name="Resize"/></mousebind>
+    </context>
+    <context name="Titlebar">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Left" action="Drag"><action name="Move"/></mousebind>
+      <mousebind button="Left" action="DoubleClick"><action name="ToggleMaximize"/></mousebind>
+      <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/><action name="ShowMenu"><menu>client-menu</menu></action></mousebind>
+    </context>
+    <context name="Top"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="Bottom"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="Left"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="Right"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="TLCorner"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="TRCorner"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="BLCorner"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="BRCorner"><mousebind button="Left" action="Drag"><action name="Resize"/></mousebind></context>
+    <context name="Client">
+      <mousebind button="Left" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Middle" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+      <mousebind button="Right" action="Press"><action name="Focus"/><action name="Raise"/></mousebind>
+    </context>
+    <context name="Icon"><mousebind button="Left" action="Press"><action name="ShowMenu"><menu>client-menu</menu></action></mousebind></context>
+    <context name="Iconify"><mousebind button="Left" action="Click"><action name="Iconify"/></mousebind></context>
+    <context name="Maximize"><mousebind button="Left" action="Click"><action name="ToggleMaximize"/></mousebind></context>
+    <context name="Close"><mousebind button="Left" action="Click"><action name="Close"/></mousebind></context>
+    <context name="Desktop">
+      <mousebind button="Right" action="Press"><action name="ShowMenu"><menu>root-menu</menu></action></mousebind>
+      <mousebind button="Left" action="Press"><action name="ShowMenu"><menu>root-menu</menu></action></mousebind>
+      <mousebind button="Middle" action="Press"><action name="ShowMenu"><menu>client-list-combined-menu</menu></action></mousebind>
+    </context>
+    <context name="Root">
+      <mousebind button="Right" action="Press"><action name="ShowMenu"><menu>root-menu</menu></action></mousebind>
+      <mousebind button="Left" action="Press"><action name="ShowMenu"><menu>root-menu</menu></action></mousebind>
+    </context>
+  </mouse>
+  <menu><file>menu.xml</file><hideDelay>200</hideDelay><middle>no</middle><submenuShowDelay>100</submenuShowDelay><applicationIcons>no</applicationIcons></menu>
+</openbox_config>

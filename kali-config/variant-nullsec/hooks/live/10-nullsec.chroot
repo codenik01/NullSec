@@ -2,11 +2,8 @@
 set -e
 echo nullsec > /etc/hostname
 sed -i 's/kali/nullsec/g' /etc/hosts || true
-chsh -s /usr/bin/zsh kali || true
-cp -rT /etc/skel /home/kali 2>/dev/null && chown -R kali:kali /home/kali || true
 systemctl enable nftables || true
 for s in bluetooth cups cups-browsed avahi-daemon ModemManager; do
   systemctl disable $s 2>/dev/null || true; systemctl mask $s 2>/dev/null || true
 done
 sed -i 's/^GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="nullsec"/' /etc/default/grub || true
-apt-get clean

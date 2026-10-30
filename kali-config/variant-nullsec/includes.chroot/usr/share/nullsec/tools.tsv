@@ -1,36 +1,36 @@
-recon	nmap	Port/service scanner
-recon	masscan	Fast port scanner
-recon	amass	Subdomain enumeration
-recon	subfinder	Passive subdomains
-recon	httpx	HTTP probing
-recon	theHarvester	OSINT
-web	ffuf	Web fuzzer
-web	gobuster	Dir/DNS brute force
-web	nikto	Web server scanner
-web	nuclei	Template vuln scanner
-web	sqlmap	SQL injection
-web	burpsuite	Intercepting proxy
-network	bettercap	MITM framework
-network	responder	LLMNR/NBT-NS
-network	tcpdump	Packet capture
-network	tshark	Packet analysis
-network	socat	Socket relay
-ad	netexec	SMB/WinRM/LDAP
-ad	evil-winrm	WinRM shell
-ad	bloodhound-python	AD ingestor
-ad	impacket-secretsdump	Dump secrets
-exploit	msfconsole	Metasploit
-exploit	searchsploit	Exploit-DB search
-passwords	hashcat	GPU cracker
-passwords	john	John the Ripper
-passwords	hydra	Online brute force
-wireless	airmon-ng	Monitor mode
-wireless	airodump-ng	Wi-Fi capture
-wireless	hcxdumptool	Handshake/PMKID
-re	ghidra	Decompiler
-re	r2	radare2
-re	gdb	Debugger
-re	binwalk	Firmware analysis
-forensics	vol	Volatility 3
-forensics	foremost	File carving
-forensics	exiftool	Metadata
+recon	nmap	Port/service scanner	nmap
+recon	masscan	Fast port scanner	masscan
+recon	amass	Subdomain enumeration	amass
+recon	subfinder	Passive subdomains	subfinder
+recon	httpx	HTTP probing	httpx-toolkit
+recon	theHarvester	OSINT	theharvester
+web	ffuf	Web fuzzer	ffuf
+web	gobuster	Dir/DNS brute force	gobuster
+web	nikto	Web scanner	nikto
+web	nuclei	Template scanner	nuclei
+web	sqlmap	SQL injection	sqlmap
+web	burpsuite	Intercepting proxy (on demand)	burpsuite
+network	bettercap	MITM framework	bettercap
+network	responder	LLMNR poisoner	responder
+network	tcpdump	Packet capture	tcpdump
+network	tshark	Packet analysis	tshark
+network	socat	Socket relay	socat
+ad	netexec	SMB/WinRM/LDAP	netexec
+ad	evil-winrm	WinRM shell	evil-winrm
+ad	bloodhound-python	AD ingestor	bloodhound.py
+ad	impacket-secretsdump	Dump secrets	impacket-scripts
+exploit	msfconsole	Metasploit (on demand)	metasploit-framework
+exploit	searchsploit	Exploit-DB	exploitdb
+passwords	hashcat	GPU cracker	hashcat
+passwords	john	John the Ripper	john
+passwords	hydra	Online brute force	hydra
+wireless	airmon-ng	Monitor mode	aircrack-ng
+wireless	airodump-ng	Wi-Fi capture	aircrack-ng
+wireless	hcxdumptool	Handshake capture	hcxdumptool
+re	ghidra	Decompiler (on demand)	ghidra
+re	r2	radare2	radare2
+re	gdb	Debugger	gdb
+re	binwalk	Firmware analysis	binwalk
+forensics	vol	Volatility 3 (on demand)	volatility3
+forensics	foremost	File carving	foremost
+forensics	exiftool	Metadata	libimage-exiftool-perl

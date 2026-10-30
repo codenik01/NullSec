@@ -1,0 +1,36 @@
+[window]
+padding = { x = 8, y = 6 }
+decorations = "none"
+opacity = 0.96
+[font]
+size = 11.0
+normal = { family = "JetBrains Mono", style = "Regular" }
+[colors.primary]
+background = "#0a0a0a"
+foreground = "#c8c8c8"
+[colors.cursor]
+cursor = "#e5484d"
+text = "#0a0a0a"
+[colors.selection]
+background = "#2a2a2a"
+text = "#ffffff"
+[colors.normal]
+black = "#0a0a0a"
+red = "#e5484d"
+green = "#7fb069"
+yellow = "#d9a441"
+blue = "#6c8ebf"
+magenta = "#a67db8"
+cyan = "#5fb3b3"
+white = "#c8c8c8"
+[colors.bright]
+black = "#5a5a5a"
+red = "#ff6369"
+green = "#9ccc7f"
+yellow = "#f0c060"
+blue = "#8fb0e0"
+magenta = "#c49ad6"
+cyan = "#7fd0d0"
+white = "#ffffff"
+[terminal.shell]
+program = "/usr/bin/zsh"

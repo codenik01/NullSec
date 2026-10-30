@@ -1,0 +1,17 @@
+[global]
+font = JetBrains Mono 10
+frame_width = 1
+frame_color = "#e5484d"
+corner_radius = 0
+width = 320
+offset = 10x32
+origin = top-right
+[urgency_low]
+background = "#0a0a0a"
+foreground = "#5a5a5a"
+[urgency_normal]
+background = "#0a0a0a"
+foreground = "#c8c8c8"
+[urgency_critical]
+background = "#0a0a0a"
+foreground = "#e5484d"
