@@ -13,7 +13,7 @@ case "$choice" in
   "-- ethernet"*) for d in $(nmcli -t -f DEVICE,TYPE dev | awk -F: '$2=="ethernet"{print $1}'); do nmcli dev connect "$d" >/dev/null 2>&1 && say "ethernet $d connected" || say "ethernet $d: no link"; done;;
   "-- wifi: rescan"*) nmcli dev wifi rescan >/dev/null 2>&1; sleep 3; exec "$0";;
   "-- disconnect"*) for d in $(nmcli -t -f DEVICE,TYPE,STATE dev | awk -F: '$3=="connected"&&($2=="wifi"||$2=="ethernet"){print $1}'); do nmcli dev disconnect "$d" >/dev/null 2>&1; done; say "disconnected";;
-  "-- advanced"*) exec alacritty -e nmtui;;
+  "-- advanced"*) exec ns-term nmtui;;
   *) ssid=$(cut -c3-34 <<<"$choice" | sed 's/ *$//'); sec=$(awk '{print $NF}' <<<"$choice")
      if nmcli -t -f NAME con show | grep -Fxq "$ssid"; then out=$(nmcli con up id "$ssid" 2>&1)
      elif [ "$sec" = open ]; then out=$(nmcli dev wifi connect "$ssid" 2>&1)

@@ -1,21 +1,27 @@
-# NULLSEC OS v3
-Black, minimal, mouse + keyboard security live OS. Ubuntu 24.04 base + Ubuntu's own kernel (no custom kernel). amd64 + arm64.
+# NullOS (v4)
+Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with Hyprland-style gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away.
 
-## Use
-Live user `ns` (no password, passwordless sudo). BIOS + UEFI hybrid ISO.
-**Mouse:** click desktop = tool menu. Panel: [tools] [term] [net] [power]. Drag title bar to move; edges to resize; buttons: minimise / maximise (right-click = fullscreen) / close.
-**Keys (Alt, or Super for the first few):** Alt+Enter terminal | Alt+d run | Alt+t tools | Alt+n network | Alt+b browser | F12 dropdown terminal | Alt+F4 close
-Alt+1..5 desktops, Ctrl+Alt+1..5 send window | Alt+Shift+Left/Right = snap half, Alt+Shift+Up = maximise, Alt+Shift+Down = restore centred | F11 fullscreen | Alt+drag move, Alt+right-drag resize.
-New windows open centred at 70% size on their own.
+## Login
+User `ns`, no password, passwordless sudo.
 
-## Themes (red / blue / green)
-`ns-theme blue` (or Alt+Shift+t, or right-click menu > theme). Recolours panel, borders, menus, terminal, prompt and wallpaper. Custom: `ns-theme ff8800`.
+## Panel (top)
+[NullOS logo] = start menu (apps, settings, power) | [term] | [net] | [tools] | workspaces + windows | tray | clock. Right-click the logo = power menu.
 
-## Network
-Alt+n or [ net ]: pick Wi-Fi, type password. Ethernet connects automatically. `nmtui` for advanced.
+## Keys (Super; Alt works for the core ones)
+Super+Enter terminal | Super+Space start menu | Super+D apps | Super+T security tools | Super+N network | Super+B browser | Super+E files
+Super+Q close | Super+V float | Super+F fullscreen | Super+W tabbed/split | Super+arrows (or h/j/k/l) focus | +Shift move | Super+R resize mode
+Super+1..9 workspace, +Shift move window | Super+Tab next workspace | Super+- scratchpad | F12 dropdown terminal | Super+Shift+S screenshot | Super+Shift+T theme | Super+Shift+E power
+Mouse: Super+left-drag moves floating windows, Super+right-drag resizes.
 
-## Other
-`ns-fx off` turn off fade/dim effects | `ns-dpi 144` bigger text on Retina | `ns-kbd <layout>` | `ns-diag` (saves ~/nullsec-diag.txt) | `ns-pack list/add` install extra tools | `target <ip>` | `ns` tool browser
+## Terminal
+Right-click = Copy / Paste / Paste Selection / Open Tab / Preferences. Selecting text copies it.
+Commands: ifconfig, ip, ping, neofetch, fastfetch (`ff`), nano, ssh, htop, tree, unzip, dig, whois, lspci, lsusb, man ...
+
+## Apps
+Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse), Wi-Fi/network (ns-net + tray applet), Audio (pavucontrol), Archives (engrampa), Text editor (mousepad), Screenshot, Power manager, Task manager, Images (ristretto), Calculator (mate-calc), PDF (atril), Firefox.
+
+## Look
+`ns-theme red|blue|green|<hex>` recolours panel, borders, menus, terminal, GTK apps, prompt, fastfetch/neofetch logo. `ns-wallpaper` picks the wallpaper (default = NullOS Cyber Fortress). `ns-mode tiling|floating` switches layout. `ns-fx off` disables fade effects. `ns-dpi 144` for Retina text.
 
 ## Build
-`sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso (builds both).
+`sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.

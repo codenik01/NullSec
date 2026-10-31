@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# ns-logo [hex]  -- builds the NullOS logo for fastfetch/neofetch in the current accent colour
+C=~/.config/nullsec; mkdir -p "$C" ~/.config/fastfetch ~/.config/neofetch
+acc=${1:-$(cat "$C/accent" 2>/dev/null || echo e5484d)}; acc=${acc#\#}
+python3 - "$acc" "$C" <<'PY'
+import sys
+acc,C=sys.argv[1],sys.argv[2]
+r,g,b=int(acc[0:2],16),int(acc[2:4],16),int(acc[4:6],16)
+mask=open("/usr/share/nullsec/logo.mask").read().split("\n")
+mask=[l for l in mask if l]
+# truecolor version for fastfetch
+out=[]
+for l in mask:
+    s=""
+    for ch in l:
+        if ch=="W": s+="\033[38;2;232;232;232m██"
+        elif ch=="A": s+="\033[38;2;%d;%d;%dm██"%(r,g,b)
+        else: s+="  "
+    out.append(s+"\033[0m")
+open(C+"/logo.ansi","w").write("\n".join(out)+"\n")
+# 256-colour index for neofetch
+def idx(r,g,b):
+    q=lambda v: 0 if v<48 else 1 if v<115 else (v-35)//40
+    return 16+36*q(r)+6*q(g)+q(b)
+n=idx(r,g,b)
+neo=[]
+for l in mask:
+    s=""
+    for ch in l:
+        s+= "${c1}██" if ch=="W" else ("${c2}██" if ch=="A" else "  ")
+    neo.append(s)
+open(C+"/logo.neo","w").write("\n".join(neo)+"\n")
+open(C+"/accent256","w").write(str(n))
+PY
+n=$(cat "$C/accent256")
+cfg=~/.config/neofetch/config.conf
+if [ -f "$cfg" ]; then
+  sed -i "s|^image_backend=.*|image_backend=\"ascii\"|; s|^image_source=.*|image_source=\"\$HOME/.config/nullsec/logo.neo\"|; s|^ascii_colors=.*|ascii_colors=(255 $n)|; s|^colors=.*|colors=($n 255 8 $n 8 255)|" "$cfg"
+fi
+ff=~/.config/fastfetch/config.jsonc
+R=$((16#${acc:0:2})); G=$((16#${acc:2:2})); B=$((16#${acc:4:2}))
+cat > "$ff" <<JSON
+{
+  "logo": { "type": "file-raw", "source": "$HOME/.config/nullsec/logo.ansi", "padding": { "right": 3, "top": 1 } },
+  "display": { "separator": "  ", "color": { "keys": "38;2;$R;$G;$B", "title": "38;2;$R;$G;$B" } },
+  "modules": [ "title", "separator", "os", "kernel", "uptime", "packages", "shell", "wm", "terminal", "cpu", "gpu", "memory", "disk", "localip", "break", "colors" ]
+}
+JSON

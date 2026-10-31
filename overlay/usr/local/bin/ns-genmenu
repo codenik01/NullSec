@@ -4,13 +4,13 @@ T=/usr/share/nullsec/tools.tsv; OUT=${1:-$HOME/.config/openbox/menu.xml}
 {
 echo '<?xml version="1.0" encoding="UTF-8"?><openbox_menu xmlns="http://openbox.org/3.4/menu">'
 echo '<menu id="root-menu" label="nullsec">'
-echo '<item label="terminal"><action name="Execute"><command>alacritty</command></action></item>'
+echo '<item label="terminal"><action name="Execute"><command>ns-term</command></action></item>'
 echo '<item label="browser"><action name="Execute"><command>firefox-esr</command></action></item>'
 echo '<item label="run..."><action name="Execute"><command>rofi -show run</command></action></item>'
 echo '<separator/>'
 for c in $(cut -f1 $T | sort -u); do
   echo "<menu id=\"m-$c\" label=\"$c\">"
-  awk -F'\t' -v c="$c" '$1==c{printf "<item label=\"%s\"><action name=\"Execute\"><command>alacritty -e ns-run %s %s</command></action></item>\n",$2,$2,$4}' $T
+  awk -F'\t' -v c="$c" '$1==c{printf "<item label=\"%s\"><action name=\"Execute\"><command>ns-term ns-run %s %s</command></action></item>\n",$2,$2,$4}' $T
   echo '</menu>'
 done
 echo '<separator/>'
@@ -21,8 +21,8 @@ echo '</menu>'
 echo '<menu id="m-system" label="system">'
 echo '<item label="dropdown terminal (F12)"><action name="Execute"><command>ns-drop</command></action></item>'
 echo '<item label="effects on/off"><action name="Execute"><command>ns-fx toggle</command></action></item>'
-echo '<item label="diagnose"><action name="Execute"><command>alacritty -e ns-diag</command></action></item>'
-echo '<item label="install more tools"><action name="Execute"><command>alacritty -e ns-pack list</command></action></item>'
+echo '<item label="diagnose"><action name="Execute"><command>ns-term ns-diag</command></action></item>'
+echo '<item label="install more tools"><action name="Execute"><command>ns-term ns-pack list</command></action></item>'
 echo '<item label="lock"><action name="Execute"><command>i3lock -c 0a0a0a</command></action></item>'
 echo '</menu>'
 echo '<item label="power"><action name="Execute"><command>ns-power</command></action></item>'

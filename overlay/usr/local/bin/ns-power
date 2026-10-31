@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
-a=$(printf 'lock\nlogout\nreboot\nshutdown\n' | rofi -dmenu -p "power") || exit 0
-case $a in lock) i3lock -c 0a0a0a;; logout) i3-msg exit;; reboot) systemctl reboot;; shutdown) systemctl poweroff;; esac
+a=$(printf '%s\n' "Lock" "Log out" "Reboot" "Power off" | rofi -dmenu -i -p power) || exit 0
+case "$a" in
+  Lock) i3lock -c 0a0a0a;;
+  "Log out") loginctl terminate-session "${XDG_SESSION_ID:-self}" 2>/dev/null || pkill -u "$USER" -x "i3|openbox";;
+  Reboot) systemctl reboot || sudo systemctl reboot;;
+  "Power off") systemctl poweroff || sudo systemctl poweroff;;
+esac

@@ -25,3 +25,7 @@ alias myip='curl -s ifconfig.me; echo'
 alias serve='python3 -m http.server 8000'
 target()   { export TARGET="$1"; mkdir -p ~/ops/"$1"/{recon,loot,notes}; cd ~/ops/"$1"; }
 untarget() { unset TARGET; cd ~; }
+
+alias ff=fastfetch
+alias ll='ls -lAh --color=auto'
+alias update='sudo apt update && sudo apt full-upgrade'

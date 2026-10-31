@@ -15,17 +15,20 @@
   <desktops><number>5</number><firstdesk>1</firstdesk><names><name>recon</name><name>web</name><name>exploit</name><name>post</name><name>notes</name></names><popupTime>600</popupTime></desktops>
   <keyboard>
     <chainQuitKey>C-g</chainQuitKey>
-    <keybind key="A-Return"><action name="Execute"><command>alacritty</command></action></keybind>
-    <keybind key="W-Return"><action name="Execute"><command>alacritty</command></action></keybind>
-    <keybind key="C-A-t"><action name="Execute"><command>alacritty</command></action></keybind>
-    <keybind key="F12"><action name="Execute"><command>ns-drop</command></action></keybind>
+    <keybind key="A-Return"><action name="Execute"><command>ns-term</command></action></keybind>
+    <keybind key="W-Return"><action name="Execute"><command>ns-term</command></action></keybind>
+    <keybind key="C-A-t"><action name="Execute"><command>ns-term</command></action></keybind>
+    <keybind key="F12"><action name="Execute"><command>xfce4-terminal --drop-down</command></action></keybind>
+    <keybind key="A-space"><action name="Execute"><command>ns-start</command></action></keybind>
+    <keybind key="W-space"><action name="Execute"><command>ns-start</command></action></keybind>
+    <keybind key="A-e"><action name="Execute"><command>thunar</command></action></keybind>
     <keybind key="A-d"><action name="Execute"><command>rofi -show run</command></action></keybind>
     <keybind key="W-d"><action name="Execute"><command>rofi -show run</command></action></keybind>
     <keybind key="A-t"><action name="Execute"><command>ns-menu</command></action></keybind>
     <keybind key="W-t"><action name="Execute"><command>ns-menu</command></action></keybind>
     <keybind key="A-n"><action name="Execute"><command>ns-net</command></action></keybind>
     <keybind key="A-S-t"><action name="Execute"><command>ns-theme</command></action></keybind>
-    <keybind key="A-b"><action name="Execute"><command>sh -c "command -v firefox >/dev/null &amp;&amp; firefox || alacritty -e ns-run firefox firefox"</command></action></keybind>
+    <keybind key="A-b"><action name="Execute"><command>ns-browser</command></action></keybind>
     <keybind key="A-S-e"><action name="Execute"><command>ns-power</command></action></keybind>
     <keybind key="A-S-x"><action name="Execute"><command>i3lock -c 0a0a0a</command></action></keybind>
     <keybind key="A-S-q"><action name="Close"/></keybind>
@@ -108,11 +111,6 @@
     <application type="normal">
       <position force="no"><x>center</x><y>center</y></position>
       <size><width>70%</width><height>70%</height></size>
-    </application>
-    <application name="ns-drop">
-      <decor>no</decor><layer>above</layer><skip_taskbar>yes</skip_taskbar><skip_pager>yes</skip_pager><desktop>all</desktop>
-      <position force="yes"><x>0</x><y>0</y></position>
-      <size><width>100%</width><height>45%</height></size>
     </application>
   </applications>
 </openbox_config>

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# default terminal: xfce4-terminal (right-click = Copy / Paste / Select all / Preferences)
+if [ "$#" -gt 0 ]; then exec xfce4-terminal -x "$@"; else exec xfce4-terminal; fi
