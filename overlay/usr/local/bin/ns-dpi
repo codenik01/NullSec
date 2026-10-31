@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# ns-dpi <96|120|144|192>  -- scale text for HiDPI/Retina screens (UTM on a Mac: try 144)
+d=${1:-96}; sed -i "s/^Xft.dpi:.*/Xft.dpi: $d/" ~/.Xresources; xrdb -merge ~/.Xresources
+echo "dpi $d applied to new windows (close and reopen terminals)"

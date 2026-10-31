@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# ns-theme [red|blue|green|<hex>]  -- recolours panel, borders, menus, terminal, prompt, wallpaper
+C=~/.config/nullsec; mkdir -p "$C"
+declare -A P=([red]=e5484d [blue]=4c8dff [green]=3ecf8e)
+cur=$(cat "$C/accent" 2>/dev/null || echo e5484d)
+n=${1:-}
+[ -n "$n" ] || n=$(printf 'red\nblue\ngreen\n' | rofi -dmenu -p theme) || exit 0
+new=${P[$n]:-${n#\#}}
+[[ $new =~ ^[0-9a-fA-F]{6}$ ]] || { echo "usage: ns-theme red|blue|green|<hex>"; exit 1; }
+new=$(tr 'A-F' 'a-f' <<<"$new")
+for f in ~/.themes/nullsec/openbox-3/themerc ~/.config/tint2/tint2rc ~/.config/alacritty/alacritty.toml \
+         ~/.local/share/rofi/themes/nullsec.rasi ~/.config/dunst/dunstrc ~/.config/i3/config \
+         ~/.config/i3status/config ~/.tmux.conf ~/.zshrc; do
+  [ -f "$f" ] && sed -i "s/#$cur/#$new/Ig" "$f"
+done
+echo "$new" > "$C/accent"
+python3 - "$new" "$C/wallpaper.png" <<'PY'
+import sys,zlib,struct
+h,out=sys.argv[1],sys.argv[2]; r,g,b=int(h[0:2],16),int(h[2:4],16),int(h[4:6],16)
+W,H=1920,1080; bg=bytes([10,10,10])*W
+ln=bytearray(bg)
+for x in range(860,1060): ln[3*x:3*x+3]=bytes([r,g,b])
+raw=b"".join(b"\x00"+(bytes(ln) if 538<=y<=540 else bg) for y in range(H))
+def ch(t,d): return struct.pack(">I",len(d))+t+d+struct.pack(">I",zlib.crc32(t+d)&0xffffffff)
+open(out,"wb").write(b"\x89PNG\r\n\x1a\n"+ch(b"IHDR",struct.pack(">IIBBBBB",W,H,8,2,0,0,0))+ch(b"IDAT",zlib.compress(raw,6))+ch(b"IEND",b""))
+PY
+openbox --reconfigure 2>/dev/null
+pkill -x tint2 2>/dev/null; (setsid tint2 >/dev/null 2>&1 &)
+pkill -x dunst 2>/dev/null; (setsid dunst >/dev/null 2>&1 &)
+feh --bg-fill "$C/wallpaper.png" 2>/dev/null
+tmux source-file ~/.tmux.conf 2>/dev/null; i3-msg reload >/dev/null 2>&1
+notify-send "theme" "accent #$new" 2>/dev/null; echo "theme: #$new  (open a new terminal to see the prompt colour)"

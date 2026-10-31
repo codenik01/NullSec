@@ -1,6 +1,6 @@
 * { bg: #0a0a0a; fg: #c8c8c8; ac: #e5484d; font: "JetBrains Mono 11";
     background-color: @bg; text-color: @fg; border-color: @ac; }
-window { width: 560px; border: 1px; padding: 0; }
+window { width: 560px; border: 3px; padding: 0; }
 mainbox { padding: 10px; border: 0; }
 inputbar { padding: 6px; border: 0; children: [prompt, entry]; }
 prompt { text-color: @ac; padding: 0 8px 0 0; }

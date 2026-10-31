@@ -1,6 +1,6 @@
 [global]
 font = JetBrains Mono 10
-frame_width = 1
+frame_width = 3
 frame_color = "#e5484d"
 corner_radius = 0
 width = 320

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# ns-net: click-through Wi-Fi / Ethernet menu (rofi + nmcli). Alt+n or the [ net ] panel button.
+say() { notify-send -t 5000 "network" "$1" 2>/dev/null || echo "$1"; }
+nmcli radio wifi on >/dev/null 2>&1
+status=$(nmcli -t -f DEVICE,TYPE,STATE,CONNECTION dev 2>/dev/null | awk -F: '$3=="connected"&&$2!="loopback"&&$2!="bridge"{printf "%s via %s  ",$4,$1}')
+wifi=$(nmcli -t -e yes -f IN-USE,SSID,SIGNAL,SECURITY dev wifi list 2>/dev/null | awk -F: '
+  {u=$1; sec=$NF; sig=$(NF-1); s=$2; for(i=3;i<=NF-2;i++) s=s ":" $i; gsub(/\\/,"",s)
+   if (s!="") printf "%s%-32s %3s%%  %s\n",(u=="*"?"* ":"  "),s,sig,(sec==""?"open":sec)}' | sort -u -k1.3)
+choice=$( { printf '%s\n' "-- status: ${status:-not connected}" "-- ethernet: connect" "-- wifi: rescan" "-- disconnect all" "-- advanced (nmtui)"; [ -n "$wifi" ] && echo "$wifi"; } | rofi -dmenu -i -p "net" ) || exit 0
+case "$choice" in
+  "") exit 0;;
+  "-- status"*) exec "$0";;
+  "-- ethernet"*) for d in $(nmcli -t -f DEVICE,TYPE dev | awk -F: '$2=="ethernet"{print $1}'); do nmcli dev connect "$d" >/dev/null 2>&1 && say "ethernet $d connected" || say "ethernet $d: no link"; done;;
+  "-- wifi: rescan"*) nmcli dev wifi rescan >/dev/null 2>&1; sleep 3; exec "$0";;
+  "-- disconnect"*) for d in $(nmcli -t -f DEVICE,TYPE,STATE dev | awk -F: '$3=="connected"&&($2=="wifi"||$2=="ethernet"){print $1}'); do nmcli dev disconnect "$d" >/dev/null 2>&1; done; say "disconnected";;
+  "-- advanced"*) exec alacritty -e nmtui;;
+  *) ssid=$(cut -c3-34 <<<"$choice" | sed 's/ *$//'); sec=$(awk '{print $NF}' <<<"$choice")
+     if nmcli -t -f NAME con show | grep -Fxq "$ssid"; then out=$(nmcli con up id "$ssid" 2>&1)
+     elif [ "$sec" = open ]; then out=$(nmcli dev wifi connect "$ssid" 2>&1)
+     else pw=$(rofi -dmenu -password -p "password: $ssid" -lines 0 < /dev/null) || exit 0
+          out=$(nmcli dev wifi connect "$ssid" password "$pw" 2>&1); fi
+     case "$out" in *successfully*) say "connected to $ssid";; *) say "failed: $(head -c 120 <<<"$out")";; esac;;
+esac

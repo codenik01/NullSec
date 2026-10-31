@@ -6,15 +6,17 @@ for f in /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
          /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
          /usr/share/doc/fzf/examples/key-bindings.zsh; do [ -r $f ] && source $f; done
 
-# prompt:  [ip] [target] user@host ~/path   (ip prefers tun0)
+zmodload zsh/nearcolor 2>/dev/null
+# prompt:  [ip] [target] user@host path   (accent colour follows ns-theme)
 _ipp() {
   local i=$(ip -4 -o addr show tun0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1)
   [ -z "$i" ] && i=$(ip -4 -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -1)
-  echo "${i:--}"
+  if [ -n "$i" ]; then echo "$i"; else echo "no-ip"; fi
 }
-_tgt() { [ -n "$TARGET" ] && printf '%%F{8}[%%f%%F{1}%s%%f%%F{8}]%%f ' "$TARGET"; }
+_tgt() { [ -n "$TARGET" ] && printf '%%F{8}[%%f%%F{#e5484d}%s%%f%%F{8}]%%f ' "$TARGET"; }
 PROMPT='%F{8}[%f%F{15}$(_ipp)%f%F{8}]%f $(_tgt)%F{15}%n%F{8}@%F{15}%m %F{8}%~%f
-%(?.%F{1}.%F{9})>%f '
+%(?.%F{#e5484d}.%F{9})>%f '
+
 
 alias ls='ls --color=auto -lAh --group-directories-first'
 alias grep='grep --color=auto'

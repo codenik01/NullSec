@@ -1,4 +1,8 @@
-sh -c 'feh --bg-fill /usr/share/backgrounds/nullsec.png || xsetroot -solid "#0a0a0a"' &
+xsetroot -cursor_name left_ptr &
+[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources &
+sh -c '[ -f ~/.config/nullsec/wallpaper.png ] && feh --bg-fill ~/.config/nullsec/wallpaper.png || feh --bg-fill /usr/share/backgrounds/nullsec.png || xsetroot -solid "#0a0a0a"' &
 dunst &
 tint2 &
 nm-applet &
+spice-vdagent &
+[ -f ~/.config/nullsec/nofx ] || picom --config ~/.config/picom/picom.conf -b &

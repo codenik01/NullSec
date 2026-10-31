@@ -14,9 +14,17 @@ for c in $(cut -f1 $T | sort -u); do
   echo '</menu>'
 done
 echo '<separator/>'
+echo '<item label="network"><action name="Execute"><command>ns-net</command></action></item>'
+echo '<menu id="m-theme" label="theme">'
+for t in red blue green; do echo "<item label=\"$t\"><action name=\"Execute\"><command>ns-theme $t</command></action></item>"; done
+echo '</menu>'
+echo '<menu id="m-system" label="system">'
+echo '<item label="dropdown terminal (F12)"><action name="Execute"><command>ns-drop</command></action></item>'
+echo '<item label="effects on/off"><action name="Execute"><command>ns-fx toggle</command></action></item>'
 echo '<item label="diagnose"><action name="Execute"><command>alacritty -e ns-diag</command></action></item>'
 echo '<item label="install more tools"><action name="Execute"><command>alacritty -e ns-pack list</command></action></item>'
 echo '<item label="lock"><action name="Execute"><command>i3lock -c 0a0a0a</command></action></item>'
+echo '</menu>'
 echo '<item label="power"><action name="Execute"><command>ns-power</command></action></item>'
 echo '</menu></openbox_menu>'
 } > "$OUT"

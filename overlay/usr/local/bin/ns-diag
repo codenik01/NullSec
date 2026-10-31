@@ -11,6 +11,7 @@ echo "== keyboard =="; setxkbmap -query 2>&1
 echo "== running ui =="; pgrep -a 'openbox|i3|tint2|lightdm|Xorg' 2>&1
 echo "== lightdm log (tail) =="; tail -n 30 /var/log/lightdm/lightdm.log 2>&1
 echo "== xsession-errors (tail) =="; tail -n 30 ~/.xsession-errors 2>&1
+echo "== network =="; nmcli dev 2>&1; nmcli con show 2>&1; cat /etc/resolv.conf 2>&1
 echo "== guest tools =="; systemctl is-active open-vm-tools spice-vdagent qemu-guest-agent 2>&1
 } > "$O" 2>&1
 cat "$O"; echo; echo "saved to $O"; read -r -p "press enter" _

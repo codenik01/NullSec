@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# ns-fx on|off|toggle  -- fade + dim-unfocused effects (picom). Turn off if your VM feels slow.
+F=~/.config/nullsec/nofx; mkdir -p ~/.config/nullsec
+case "${1:-toggle}" in
+  on) rm -f "$F";; off) touch "$F";;
+  toggle) [ -f "$F" ] && rm -f "$F" || touch "$F";;
+esac
+pkill -x picom 2>/dev/null
+[ -f "$F" ] && echo "effects: off" || { (setsid picom --config ~/.config/picom/picom.conf -b >/dev/null 2>&1 &); echo "effects: on"; }

@@ -9,3 +9,15 @@ open-vm-tools open-vm-tools-desktop spice-vdagent qemu-guest-agent virtualbox-gu
 nftables macchanger proxychains4 openvpn wireguard-tools dnsutils netcat-openbsd socat tcpdump tshark
 nmap masscan ffuf gobuster whatweb sqlmap hydra john hashcat aircrack-ng hcxtools hcxdumptool bettercap
 gdb radare2 binwalk foremost libimage-exiftool-perl python3-pwntools python3-impacket
+wpasupplicant
+iw
+wireless-tools
+rfkill
+net-tools
+xdotool
+wmctrl
+x11-utils
+libnotify-bin
+picom
+xclip
+isc-dhcp-client

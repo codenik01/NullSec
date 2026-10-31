@@ -38,6 +38,7 @@ cp "$W/pkgs.ok" "$R/pkgs.txt"
 chroot "$R" /bin/bash -c 'apt-get install -y --no-install-recommends $(tr "\n" " " < /pkgs.txt)'
 echo "== 3/6 overlay + finalize"
 cp -a "$HERE/overlay/." "$R/"
+chmod +x "$R"/usr/local/bin/ns* 2>/dev/null || true
 cat > "$R/fin.sh" <<'FIN'
 #!/bin/bash
 set -e
@@ -52,9 +53,10 @@ for s in bluetooth cups cups-browsed avahi-daemon ModemManager apport snapd; do 
 /usr/local/bin/ns-genmenu /etc/skel/.config/openbox/menu.xml
 update-initramfs -u -k all
 rm -f /usr/sbin/policy-rc.d /pkgs.txt /fin.sh
+mkdir -p /var/lib/apt/lists/partial
 apt-get clean; rm -rf /var/lib/apt/lists/* /var/cache/apt/*.bin /usr/share/doc/* /usr/share/man/* /usr/share/info/* /tmp/* /root/.cache /var/log/apt/* 2>/dev/null || true
 find /usr/share/locale -mindepth 1 -maxdepth 1 ! -name 'en*' ! -name locale.alias -exec rm -rf {} + 2>/dev/null || true
-: > /etc/machine-id; rm -f /etc/resolv.conf; : > /etc/resolv.conf
+mkdir -p /var/lib/apt/lists/partial; : > /etc/machine-id; rm -f /etc/resolv.conf; : > /etc/resolv.conf
 FIN
 chroot "$R" /bin/bash /fin.sh
 echo "== 4/6 sanity checks"

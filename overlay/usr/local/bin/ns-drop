@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# F12: dropdown terminal (show/hide)
+id=$(xdotool search --class ns-drop 2>/dev/null | head -1)
+if [ -z "$id" ]; then exec alacritty --class ns-drop,ns-drop
+elif xprop -id "$id" _NET_WM_STATE 2>/dev/null | grep -q HIDDEN; then wmctrl -i -R "$id"
+else xdotool windowminimize "$id"; fi

@@ -1,14 +1,21 @@
-# NULLSEC OS (v3)
-Black, minimal, mouse+keyboard security live OS. Ubuntu 24.04 base + Ubuntu's own kernel (no custom kernel).
-Openbox + flat panel + right-click category menu, zsh, tmux, ~30 tools, rest on demand (`ns-pack`).
+# NULLSEC OS v3
+Black, minimal, mouse + keyboard security live OS. Ubuntu 24.04 base + Ubuntu's own kernel (no custom kernel). amd64 + arm64.
 
-## Boot / use
-Live user: `ns` (no password, passwordless sudo). Hybrid ISO: BIOS + UEFI.
-Alt+Enter terminal | Alt+d run | Alt+t tool menu | Alt+b browser | Alt+1..5 desktops | Alt+F4 close | Super works for the first three
-Mouse: click desktop = tool menu; panel [tools] [term] [power]; Alt+drag move, Alt+right-drag resize.
-Terminal: `ns` tool browser | `target <ip>` | `ns-pack list|add <name>` | `ns-kbd <layout>` | `ns-diag`
-Not installed on the ISO (install on demand, needs internet): nuclei subfinder httpx amass nikto responder exploitdb netexec impacket bloodhound volatility3 evil-winrm seclists firefox metasploit ghidra.
+## Use
+Live user `ns` (no password, passwordless sudo). BIOS + UEFI hybrid ISO.
+**Mouse:** click desktop = tool menu. Panel: [tools] [term] [net] [power]. Drag title bar to move; edges to resize; buttons: minimise / maximise (right-click = fullscreen) / close.
+**Keys (Alt, or Super for the first few):** Alt+Enter terminal | Alt+d run | Alt+t tools | Alt+n network | Alt+b browser | F12 dropdown terminal | Alt+F4 close
+Alt+1..5 desktops, Ctrl+Alt+1..5 send window | Alt+Shift+Left/Right = snap half, Alt+Shift+Up = maximise, Alt+Shift+Down = restore centred | F11 fullscreen | Alt+drag move, Alt+right-drag resize.
+New windows open centred at 70% size on their own.
 
-## Rebuild (natively, root, ~12GB free)
-`sudo ./build-iso.sh amd64`  or  `sudo ./build-iso.sh arm64` (on an arm64 machine). Or push to GitHub: Actions > build-iso builds both.
-arm64 is untested: the amd64 ISO was built and boot-tested; the arm64 path uses the same script on a native arm64 runner.
+## Themes (red / blue / green)
+`ns-theme blue` (or Alt+Shift+t, or right-click menu > theme). Recolours panel, borders, menus, terminal, prompt and wallpaper. Custom: `ns-theme ff8800`.
+
+## Network
+Alt+n or [ net ]: pick Wi-Fi, type password. Ethernet connects automatically. `nmtui` for advanced.
+
+## Other
+`ns-fx off` turn off fade/dim effects | `ns-dpi 144` bigger text on Retina | `ns-kbd <layout>` | `ns-diag` (saves ~/nullsec-diag.txt) | `ns-pack list/add` install extra tools | `target <ip>` | `ns` tool browser
+
+## Build
+`sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso (builds both).
