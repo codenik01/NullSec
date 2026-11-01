@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-wallpaper [pick|restore|default|plain|<image file>]
 C=~/.config/nullsec; mkdir -p "$C"
 DEF=/usr/share/backgrounds/nullos.png

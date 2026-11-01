@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-theme [red|blue|green|<hex>]  -- recolours panel, borders, menus, terminal, GTK apps, prompt, logo
 C=~/.config/nullsec; mkdir -p "$C"
 declare -A P=([red]=e5484d [blue]=4c8dff [green]=3ecf8e)

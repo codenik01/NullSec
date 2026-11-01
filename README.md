@@ -25,3 +25,10 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
 
 ## Build
 `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
+
+## Changelog 1.0 (final)
+- Sound fixed: dbus-user-session + rtkit added (the audio manager could not start without a user session bus). Live user is in the audio/video groups, card is unmuted at login (`ns-audio fix|test|status`).
+- Shutdown/reboot no longer waits for ENTER ("remove the installation medium"); shorter systemd stop timeouts.
+- No more busy/spinning cursor after launching apps (startup notification disabled in i3, Openbox and the panel).
+- Screen never blanks, Firefox/Thunar are the defaults, tray volume icon, OS reports itself as NullOS 1.0.
+- UTM: add a Sound device (Intel HDA) under Devices if sound is still silent. Run `ns-diag` and share ~/nullsec-diag.txt if anything misbehaves.

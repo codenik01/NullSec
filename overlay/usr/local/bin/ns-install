@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-install <name|apt:pkg>  -- installs tools Ubuntu's repos don't ship (needs internet)
 set -e
 S=""; [ "$(id -u)" -ne 0 ] && S=sudo

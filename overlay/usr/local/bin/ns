@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # terminal tool browser: ns [filter]
 T=/usr/share/nullsec/tools.tsv
 sel=$(awk -F'\t' '{printf "%-10s %-22s %s\n",$1,$2,$3}' $T | fzf --query="${1:-}" --prompt="nullsec> " --reverse --height=60%) || exit 0

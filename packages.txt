@@ -13,3 +13,5 @@ open-vm-tools open-vm-tools-desktop spice-vdagent qemu-guest-agent virtualbox-gu
 nftables macchanger proxychains4 openvpn wireguard-tools
 nmap masscan ffuf gobuster whatweb sqlmap hydra john aircrack-ng hcxtools hcxdumptool bettercap
 gdb radare2 binwalk foremost libimage-exiftool-perl python3-pwntools python3-impacket
+pipewire-audio libspa-0.2-modules pasystray fonts-dejavu-core fonts-liberation xdg-user-dirs
+dbus-user-session rtkit

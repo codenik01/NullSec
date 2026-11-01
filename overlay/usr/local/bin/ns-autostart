@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # started by both sessions; every program is started only if not already running
 exec 9>/tmp/.ns-autostart.lock; flock 9
 run() { pgrep -x "$1" >/dev/null 2>&1 || ( "$@" >/dev/null 2>&1 & ); }
 xsetroot -cursor_name left_ptr
 [ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
 ns-wallpaper restore
+xset s off -dpms s noblank 2>/dev/null
+[ -f ~/.config/user-dirs.dirs ] || xdg-user-dirs-update 2>/dev/null
 run dunst
 run xfsettingsd
 run tint2
 run nm-applet
 run spice-vdagent
 run xfce4-power-manager
+run pasystray
+( sleep 5; ns-audio fix >/dev/null 2>&1 ) &
 if [ ! -f ~/.config/nullsec/nofx ]; then run picom --config ~/.config/picom/picom.conf -b; fi
 if [ "$DESKTOP_SESSION" = i3 ] || pgrep -x i3 >/dev/null; then
   pgrep -fx 'python3 /usr/local/bin/ns-autotile' >/dev/null || ( python3 /usr/local/bin/ns-autotile >/dev/null 2>&1 & )

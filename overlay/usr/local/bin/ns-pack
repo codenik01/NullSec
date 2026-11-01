@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-pack list | add <name|apt:pkg|any-apt-package> | rm <pkg>
 case "$1" in
   list) echo "installers: subfinder httpx nuclei amass nikto responder exploitdb netexec impacket bloodhound volatility3 evil-winrm seclists firefox metasploit ghidra"; echo "or: ns-pack add apt:<package>";;

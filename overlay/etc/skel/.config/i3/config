@@ -31,36 +31,36 @@ set $ws8 "8"
 set $ws9 "9"
 
 # ---- keys (Super = main; Alt also works for the core set) ----
-bindsym $mod+Return exec ns-term
-bindsym $alt+Return exec ns-term
-bindsym $mod+d exec rofi -show drun
-bindsym $alt+d exec rofi -show drun
-bindsym $mod+space exec ns-start
-bindsym $alt+space exec ns-start
-bindsym $mod+t exec ns-menu
-bindsym $alt+t exec ns-menu
-bindsym $mod+n exec ns-net
-bindsym $alt+n exec ns-net
-bindsym $mod+b exec ns-browser
-bindsym $alt+b exec ns-browser
-bindsym $mod+e exec thunar
-bindsym $alt+e exec thunar
+bindsym $mod+Return exec --no-startup-id ns-term
+bindsym $alt+Return exec --no-startup-id ns-term
+bindsym $mod+d exec --no-startup-id rofi -show drun
+bindsym $alt+d exec --no-startup-id rofi -show drun
+bindsym $mod+space exec --no-startup-id ns-start
+bindsym $alt+space exec --no-startup-id ns-start
+bindsym $mod+t exec --no-startup-id ns-menu
+bindsym $alt+t exec --no-startup-id ns-menu
+bindsym $mod+n exec --no-startup-id ns-net
+bindsym $alt+n exec --no-startup-id ns-net
+bindsym $mod+b exec --no-startup-id ns-browser
+bindsym $alt+b exec --no-startup-id ns-browser
+bindsym $mod+e exec --no-startup-id thunar
+bindsym $alt+e exec --no-startup-id thunar
 bindsym $mod+q kill
 bindsym $alt+q kill
 bindsym $mod+v floating toggle
 bindsym $alt+v floating toggle
 bindsym $mod+f fullscreen toggle
 bindsym $alt+f fullscreen toggle
-bindsym $mod+Shift+e exec ns-power
-bindsym $alt+Shift+e exec ns-power
-bindsym $mod+Shift+d exec rofi -show run
-bindsym $alt+Shift+d exec rofi -show run
+bindsym $mod+Shift+e exec --no-startup-id ns-power
+bindsym $alt+Shift+e exec --no-startup-id ns-power
+bindsym $mod+Shift+d exec --no-startup-id rofi -show run
+bindsym $alt+Shift+d exec --no-startup-id rofi -show run
 bindsym $mod+w layout toggle tabbed split
-bindsym $mod+Shift+x exec i3lock -c 0a0a0a
-bindsym $mod+Shift+s exec xfce4-screenshooter -r
+bindsym $mod+Shift+x exec --no-startup-id i3lock -c 0a0a0a
+bindsym $mod+Shift+s exec --no-startup-id xfce4-screenshooter -r
 bindsym $mod+minus scratchpad show
 bindsym $mod+Shift+minus move scratchpad
-bindsym $mod+Shift+t exec ns-theme
+bindsym $mod+Shift+t exec --no-startup-id ns-theme
 bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
 bindsym $mod+Tab workspace next
@@ -120,9 +120,12 @@ bindsym $mod+9 workspace $ws9
 bindsym $alt+9 workspace $ws9
 bindsym $mod+Shift+9 move container to workspace $ws9
 bindsym $alt+Shift+9 move container to workspace $ws9
-bindsym F12 exec xfce4-terminal --drop-down
+bindsym F12 exec --no-startup-id xfce4-terminal --drop-down
 bindsym F11 fullscreen toggle
-bindsym Print exec xfce4-screenshooter -f
+bindsym XF86AudioRaiseVolume exec --no-startup-id wpctl set-volume -l 1.2 @DEFAULT_AUDIO_SINK@ 5%+
+bindsym XF86AudioLowerVolume exec --no-startup-id wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindsym XF86AudioMute exec --no-startup-id wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindsym Print exec --no-startup-id xfce4-screenshooter -f
 
 mode "resize" {
     bindsym Left resize shrink width 40 px or 4 ppt

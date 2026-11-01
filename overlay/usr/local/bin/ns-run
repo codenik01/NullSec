@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-run <cmd> [installer-spec]: show help; offer install when missing
 cmd=$1; spec=${2:-apt:$1}; export PATH="$PATH:$HOME/.local/bin"
 if ! command -v "$cmd" >/dev/null 2>&1; then

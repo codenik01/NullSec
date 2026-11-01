@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 mode=$(cat ~/.config/nullsec/mode 2>/dev/null || echo tiling)
-c=$(printf '%s\n' "All settings" "Appearance (GTK theme, icons, fonts)" "Display / resolution" "Keyboard" "Mouse / touchpad" "Audio" "Power" "Wi-Fi / network" "Accent colour (red / blue / green)" "Wallpaper" "Text size (HiDPI)" "Effects on/off" "Layout: switch tiling <-> floating" | rofi -dmenu -i -p settings) || exit 0
+c=$(printf '%s\n' "All settings" "Appearance (GTK theme, icons, fonts)" "Display / resolution" "Keyboard" "Mouse / touchpad" "Audio mixer" "Audio: test / unmute" "Power" "Wi-Fi / network" "Accent colour (red / blue / green)" "Wallpaper" "Text size (HiDPI)" "Effects on/off" "Layout: switch tiling <-> floating" | rofi -dmenu -i -p settings) || exit 0
 case "$c" in
   "All settings") exec xfce4-settings-manager;;
   Appearance*) exec xfce4-appearance-settings;;
   Display*) exec xfce4-display-settings;;
   Keyboard) exec xfce4-keyboard-settings;;
   Mouse*) exec xfce4-mouse-settings;;
-  Audio) exec pavucontrol;;
+  "Audio mixer") exec pavucontrol;;
+  "Audio: test"*) exec ns-term ns-audio test;;
   Power) exec xfce4-power-manager-settings;;
   Wi-Fi*) exec ns-net;;
   Accent*) exec ns-theme;;

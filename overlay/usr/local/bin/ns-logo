@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-logo [hex]  -- builds the NullOS logo for fastfetch/neofetch in the current accent colour
 C=~/.config/nullsec; mkdir -p "$C" ~/.config/fastfetch ~/.config/neofetch
 acc=${1:-$(cat "$C/accent" 2>/dev/null || echo e5484d)}; acc=${acc#\#}

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-fx on|off|toggle  -- fade + dim-unfocused effects (picom). Turn off if your VM feels slow.
 F=~/.config/nullsec/nofx; mkdir -p ~/.config/nullsec
 case "${1:-toggle}" in

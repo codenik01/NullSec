@@ -15,22 +15,22 @@
   <desktops><number>5</number><firstdesk>1</firstdesk><names><name>recon</name><name>web</name><name>exploit</name><name>post</name><name>notes</name></names><popupTime>600</popupTime></desktops>
   <keyboard>
     <chainQuitKey>C-g</chainQuitKey>
-    <keybind key="A-Return"><action name="Execute"><command>ns-term</command></action></keybind>
-    <keybind key="W-Return"><action name="Execute"><command>ns-term</command></action></keybind>
-    <keybind key="C-A-t"><action name="Execute"><command>ns-term</command></action></keybind>
-    <keybind key="F12"><action name="Execute"><command>xfce4-terminal --drop-down</command></action></keybind>
-    <keybind key="A-space"><action name="Execute"><command>ns-start</command></action></keybind>
-    <keybind key="W-space"><action name="Execute"><command>ns-start</command></action></keybind>
-    <keybind key="A-e"><action name="Execute"><command>thunar</command></action></keybind>
-    <keybind key="A-d"><action name="Execute"><command>rofi -show run</command></action></keybind>
-    <keybind key="W-d"><action name="Execute"><command>rofi -show run</command></action></keybind>
-    <keybind key="A-t"><action name="Execute"><command>ns-menu</command></action></keybind>
-    <keybind key="W-t"><action name="Execute"><command>ns-menu</command></action></keybind>
-    <keybind key="A-n"><action name="Execute"><command>ns-net</command></action></keybind>
-    <keybind key="A-S-t"><action name="Execute"><command>ns-theme</command></action></keybind>
-    <keybind key="A-b"><action name="Execute"><command>ns-browser</command></action></keybind>
-    <keybind key="A-S-e"><action name="Execute"><command>ns-power</command></action></keybind>
-    <keybind key="A-S-x"><action name="Execute"><command>i3lock -c 0a0a0a</command></action></keybind>
+    <keybind key="A-Return"><action name="Execute"><command>ns-term</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="W-Return"><action name="Execute"><command>ns-term</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="C-A-t"><action name="Execute"><command>ns-term</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="F12"><action name="Execute"><command>xfce4-terminal --drop-down</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-space"><action name="Execute"><command>ns-start</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="W-space"><action name="Execute"><command>ns-start</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-e"><action name="Execute"><command>thunar</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-d"><action name="Execute"><command>rofi -show run</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="W-d"><action name="Execute"><command>rofi -show run</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-t"><action name="Execute"><command>ns-menu</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="W-t"><action name="Execute"><command>ns-menu</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-n"><action name="Execute"><command>ns-net</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-S-t"><action name="Execute"><command>ns-theme</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-b"><action name="Execute"><command>ns-browser</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-S-e"><action name="Execute"><command>ns-power</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
+    <keybind key="A-S-x"><action name="Execute"><command>i3lock -c 0a0a0a</command><startupnotify><enabled>no</enabled></startupnotify></action></keybind>
     <keybind key="A-S-q"><action name="Close"/></keybind>
     <keybind key="A-F4"><action name="Close"/></keybind>
     <keybind key="A-f"><action name="ToggleMaximize"/></keybind>

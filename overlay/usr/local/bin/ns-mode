@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # ns-mode [tiling|floating] : switch between i3 (tiling) and Openbox (floating, title bars) and log out to apply
 m=${1:-}
 [ -n "$m" ] || m=$(printf '%s\n' tiling floating | rofi -dmenu -p "layout (log out to apply)") || exit 0

@@ -3,6 +3,7 @@ border_width = 0
 background_color = #0a0a0a 100
 border_color = #1c1c1c 100
 
+startup_notifications = 0
 panel_items = PPPPTSC
 panel_position = top center horizontal
 panel_size = 100% 28

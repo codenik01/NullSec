@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
 # NullOS start menu (logo button / Super+Space): apps, settings, power. Everything is clickable.
 sub() { rofi -dmenu -i -p "$1"; }
 c=$(printf '%s\n' "Applications" "Files" "Terminal" "Browser" "Text editor" "Calculator" "PDF viewer" "Images" "Archives" "Task manager" "Screenshot" "Security tools" "Network / Wi-Fi" "Settings >" "Power >" | sub nullos) || exit 0
