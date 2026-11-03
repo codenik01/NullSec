@@ -65,7 +65,7 @@ index ca44e89..173820b 100644
  - Shutdown/reboot no longer waits for ENTER ("remove the installation medium"); shorter systemd stop timeouts.
  - No more busy/spinning cursor after launching apps (startup notification disabled in i3, Openbox and the panel).
 diff --git a/build-iso.sh b/build-iso.sh
-index 6514f3a..8f341b8 100755
+index 6514f3a..b97e9b9 100755
 --- a/build-iso.sh
 +++ b/build-iso.sh
 @@ -70,6 +70,11 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
@@ -91,7 +91,7 @@ index 6514f3a..8f341b8 100755
  update-initramfs -u -k all
  rm -f /usr/sbin/policy-rc.d /pkgs.txt /fin.sh
  apt-get clean; rm -rf /var/lib/apt/lists/* /var/cache/apt/*.bin /usr/share/doc/* /usr/share/info/* /tmp/* /root/.cache /var/log/apt/* 2>/dev/null || true
-@@ -104,9 +109,13 @@ echo "== 4/6 sanity checks"
+@@ -104,10 +109,17 @@ echo "== 4/6 sanity checks"
  chroot "$R" /bin/bash -c 'lsinitramfs /boot/initrd.img-* | grep -q "scripts/casper"' || { echo "FATAL: casper missing from initramfs"; exit 1; }
  head -c4 "$R/usr/sbin/lightdm" | grep -q ELF || { echo "FATAL: /usr/sbin/lightdm is not a binary"; exit 1; }
  [ -f "$R/etc/X11/default-display-manager" ] && [ ! -L "$R/etc/X11/default-display-manager" ] || { echo "FATAL: default-display-manager"; exit 1; }
@@ -101,12 +101,16 @@ index 6514f3a..8f341b8 100755
  cp "$K" "$ISO/casper/vmlinuz"; cp "$I" "$ISO/casper/initrd"; chmod 644 "$ISO/casper/vmlinuz"
 +[ -x "$R/usr/lib/nullos/nullos-secd" ] && [ -f "$R/etc/systemd/system/nullos-secd.service" ] && [ -f "$R/usr/share/nullos/profiles/restricted-network.json" ] \
 +  || { echo "FATAL: Security Center files missing from the image"; exit 1; }
-+INSTALLED_BYTES=$(du -sb "$R" | cut -f1)
-+dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' | sort > "$OUT/nullos-$ARCH.packages.txt"
  cleanup
++# measured AFTER cleanup: while /proc,/sys,/dev are still bind-mounted in the chroot, du walks the live host /proc and fails.
++# Release metadata must never be able to fail the build, so every step here is best-effort.
++mkdir -p "$OUT"
++INSTALLED_BYTES=$(du -sb --one-file-system "$R" 2>/dev/null | cut -f1 || true); INSTALLED_BYTES=${INSTALLED_BYTES:-0}
++dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' 2>/dev/null | sort > "$OUT/nullos-$ARCH.packages.txt" || : > "$OUT/nullos-$ARCH.packages.txt"
  
  echo "== 5/6 compress"
-@@ -142,3 +151,26 @@ EOF
+ mksquashfs "$R" "$ISO/casper/filesystem.squashfs" -comp zstd -Xcompression-level 10 -b 256K -noappend -e boot/initrd.img.old boot/vmlinuz.old
+@@ -142,3 +154,26 @@ EOF
  echo "== 6/6 iso"
  grub-mkrescue -o "$OUT/nullos-$ARCH.iso" "$ISO" -- -volid NULLOS
  ls -lh "$OUT/nullos-$ARCH.iso"

@@ -114,9 +114,12 @@ K=$(ls -1 "$R"/boot/vmlinuz-* | sort -V | tail -1); I=$(ls -1 "$R"/boot/initrd.i
 cp "$K" "$ISO/casper/vmlinuz"; cp "$I" "$ISO/casper/initrd"; chmod 644 "$ISO/casper/vmlinuz"
 [ -x "$R/usr/lib/nullos/nullos-secd" ] && [ -f "$R/etc/systemd/system/nullos-secd.service" ] && [ -f "$R/usr/share/nullos/profiles/restricted-network.json" ] \
   || { echo "FATAL: Security Center files missing from the image"; exit 1; }
-INSTALLED_BYTES=$(du -sb "$R" | cut -f1)
-dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' | sort > "$OUT/nullos-$ARCH.packages.txt"
 cleanup
+# measured AFTER cleanup: while /proc,/sys,/dev are still bind-mounted in the chroot, du walks the live host /proc and fails.
+# Release metadata must never be able to fail the build, so every step here is best-effort.
+mkdir -p "$OUT"
+INSTALLED_BYTES=$(du -sb --one-file-system "$R" 2>/dev/null | cut -f1 || true); INSTALLED_BYTES=${INSTALLED_BYTES:-0}
+dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' 2>/dev/null | sort > "$OUT/nullos-$ARCH.packages.txt" || : > "$OUT/nullos-$ARCH.packages.txt"
 
 echo "== 5/6 compress"
 mksquashfs "$R" "$ISO/casper/filesystem.squashfs" -comp zstd -Xcompression-level 10 -b 256K -noappend -e boot/initrd.img.old boot/vmlinuz.old
