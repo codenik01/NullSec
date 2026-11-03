@@ -1,4 +1,4 @@
-# NullOS (v4)
+# NullOS 2.0 (build kit v5)
 Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with Hyprland-style gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away.
 
 ## Login
@@ -23,10 +23,18 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
 ## Look
 `ns-theme red|blue|green|<hex>` recolours panel, borders, menus, terminal, GTK apps, prompt, fastfetch/neofetch logo. `ns-wallpaper` picks the wallpaper (default = NullOS Cyber Fortress). `ns-mode tiling|floating` switches layout. `ns-fx off` disables fade effects. `ns-dpi 144` for Retina text.
 
+## Security Center (new in 2.0), Super+S
+One switch for **Restricted Mode** plus profiles, an emergency disconnect, audits, sandboxes and labs, with every status *verified* against the real system.
+`ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Full guide and limits: `docs/SECURITY.md`. Tests: `sudo bash tests/run-all.sh`.
+
 ## Build
 `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
 
-## Changelog 1.0 (final)
+## Changelog 2.0
+- NEW Security Center + `nullos-secd` service, 4 profiles + custom, verification engine, kill switch, drift repair, lab networks, `ns-sandbox`, credential/privilege/service/user/package audits, `ns-pack` search/info/profiles, `ns-offline`, release metadata.
+- Existing files touched (all small, see docs/CHANGES-existing-files.patch): `ns-start`, `ns-genmenu` (+Security Center; `firefox-esr` -> `ns-browser`), `ns-autostart` (respect clipboard block), i3 config (Super+S), tint2 (live status item), `ns-install` (+prowler, scoutsuite), `packages.txt` (+bubblewrap), `build-iso.sh`, workflow. `/etc/nftables.conf` is unchanged.
+
+## Changelog 1.0
 - Sound fixed: dbus-user-session + rtkit added (the audio manager could not start without a user session bus). Live user is in the audio/video groups, card is unmuted at login (`ns-audio fix|test|status`).
 - Shutdown/reboot no longer waits for ENTER ("remove the installation medium"); shorter systemd stop timeouts.
 - No more busy/spinning cursor after launching apps (startup notification disabled in i3, Openbox and the panel).

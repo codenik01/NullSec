@@ -1,0 +1,26 @@
+[Unit]
+Description=NullOS Security Service (applies and VERIFIES security policy)
+After=local-fs.target nftables.service NetworkManager.service
+Wants=nftables.service
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/nullos/nullos-secd
+Restart=on-failure
+RestartSec=3
+# /run/nullos holds the status summary and runtime flags; keep them across service restarts
+RuntimeDirectory=nullos
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+StateDirectory=nullos
+LogsDirectory=nullos
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+ProtectControlGroups=yes
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target

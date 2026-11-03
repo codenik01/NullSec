@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# ns-lab  - disposable and isolated research environments
+#   ns-lab doctor                         which isolation backends work on this machine
+#   ns-lab workspace                      throw-away shell: empty home, no network (--net to allow), vanishes on exit
+#   ns-lab analyze FILE [--out DIR] [--net]   shell with FILE read-only at /sample and DIR writable at /out
+#   ns-lab net create ID [NODES]          isolated virtual network (private bridge + namespaces), no uplink
+#   ns-lab net list | destroy ID | run ID NODE cmd...
+#   ns-lab vm IMAGE [--net]               disposable QEMU VM: disk writes are discarded on exit (needs qemu)
+# Isolation levels: workspace/analyze/net = namespaces (shared kernel); vm = hypervisor boundary.
+sub=${1:-}; shift || true
+sec() { ns-secure "$@"; }
+case "$sub" in
+  doctor)
+    printf '%-22s' "namespace sandbox:"; if ns-sandbox -- true 2>/dev/null; then echo "OK (bubblewrap)"; else echo "UNAVAILABLE"; fi
+    printf '%-22s' "network labs:"; if python3 - <<'PY' 2>/dev/null
+import importlib.machinery as m, sys
+x = m.SourceFileLoader("c", "/usr/local/bin/ns-secure").load_module(); x.call("ping")
+PY
+    then echo "OK (security service reachable)"; else echo "UNAVAILABLE (nullos-secd not running or you are not in group sudo)"; fi
+    printf '%-22s' "disposable VM:"; if command -v qemu-system-x86_64 >/dev/null || command -v qemu-system-aarch64 >/dev/null; then echo "OK (qemu)$([ -e /dev/kvm ] && echo ' + KVM' || echo ', no KVM: slow')"; else echo "UNAVAILABLE (ns-pack add apt:qemu-system-x86  or  apt:qemu-system-arm)"; fi;;
+  workspace) net=(); [ "${1:-}" = --net ] && net=(--net); echo "[disposable workspace: empty home, everything is discarded when you exit]"; exec ns-sandbox "${net[@]}" -- bash --norc -i;;
+  analyze)
+    f=${1:-}; shift || true; [ -f "$f" ] || { echo "usage: ns-lab analyze FILE [--out DIR] [--net]"; exit 2; }
+    out=""; net=(); while [ $# -gt 0 ]; do case "$1" in --out) out=$2; shift 2;; --net) net=(--net); shift;; *) echo "unknown option $1"; exit 2;; esac; done
+    f=$(realpath "$f"); t=$(mktemp -d); trap 'rm -rf "$t"' EXIT; cp -- "$f" "$t/sample"   # a copy: the original is never exposed
+    ob=(); if [ -n "$out" ]; then mkdir -p "$out"; ob=(--rw "$(realpath "$out")"); echo "results directory (writable): $(realpath "$out")"; fi
+    echo "[analysis lab: sample is a read-only copy at $t/sample; no access to your home, keys or credentials]"
+    ns-sandbox "${net[@]}" --ro "$t" "${ob[@]}" -- bash --norc -i;;
+  net)
+    a=${1:-}; shift || true
+    case "$a" in
+      create) python3 - "$@" <<'PY'
+import importlib.machinery as m, sys
+x = m.SourceFileLoader("c", "/usr/local/bin/ns-secure").load_module()
+lid = sys.argv[1] if len(sys.argv) > 1 else "lab1"; n = int(sys.argv[2]) if len(sys.argv) > 2 else 2
+r = x.call("lab_net_create", id=lid, nodes=n); c = r["check"]
+print("%s %s" % (x.paint(c["status"]), c["detail"])); l = r["lab"]
+print("subnet %s  bridge %s  host side %s" % (l["subnet"], l["bridge"], l["host_ip"]))
+for nd in l["nodes"]: print("  node %-3s %-14s run: ns-lab net run %s %s <cmd>" % (nd["name"], nd["ip"], lid, nd["name"]))
+print("isolation: " + l["isolation"])
+PY
+      ;;
+      destroy) python3 - "$1" <<'PY'
+import importlib.machinery as m, sys
+x = m.SourceFileLoader("c", "/usr/local/bin/ns-secure").load_module(); print(x.call("lab_net_destroy", id=sys.argv[1])["detail"])
+PY
+      ;;
+      list) ns-secure status | sed -n '/LAB ENVIRONMENTS/,$p';;
+      run) id=$1; node=$2; shift 2; [ $# -gt 0 ] || { echo "usage: ns-lab net run ID NODE cmd..."; exit 2; }
+           [[ $id =~ ^[a-z][a-z0-9]{0,7}$ && $node =~ ^n[1-6]$ ]] || { echo "bad id/node"; exit 2; }
+           # runs as YOU inside the node's namespace (privileges are dropped again immediately)
+           exec sudo -n ip netns exec "nl$id-$node" setpriv --reuid="$(id -u)" --regid="$(id -g)" --init-groups -- "$@";;
+      *) sed -n '2,11p' "$0" | sed 's/^# \?//'; exit 2;;
+    esac;;
+  vm)
+    img=${1:-}; shift || true; [ -f "$img" ] || { echo "usage: ns-lab vm IMAGE [--net]"; exit 2; }
+    q=$(command -v qemu-system-x86_64 || command -v qemu-system-aarch64) || { echo "qemu is not installed: ns-pack add apt:qemu-system-x86 (or apt:qemu-system-arm)"; exit 125; }
+    nic=(-nic none); [ "${1:-}" = --net ] && nic=(-nic "user,restrict=off")
+    case "$q" in *aarch64) m=(-M virt -cpu max);; *) m=(-M q35);; esac; [ -e /dev/kvm ] && m+=(-enable-kvm)
+    echo "[disposable VM: guest disk writes are discarded on exit; network: $([ "${nic[1]}" = none ] && echo none || echo NAT)]"
+    exec "$q" "${m[@]}" -m 2048 -smp 2 -snapshot -drive file="$img",if=virtio,format=raw "${nic[@]}" -display gtk;;
+  *) sed -n '2,11p' "$0" | sed 's/^# \?//'; exit 2;;
+esac

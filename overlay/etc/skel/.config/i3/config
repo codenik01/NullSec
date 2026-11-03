@@ -39,6 +39,8 @@ bindsym $mod+space exec --no-startup-id ns-start
 bindsym $alt+space exec --no-startup-id ns-start
 bindsym $mod+t exec --no-startup-id ns-menu
 bindsym $alt+t exec --no-startup-id ns-menu
+bindsym $mod+s exec --no-startup-id ns-security
+bindsym $alt+s exec --no-startup-id ns-security
 bindsym $mod+n exec --no-startup-id ns-net
 bindsym $alt+n exec --no-startup-id ns-net
 bindsym $mod+b exec --no-startup-id ns-browser

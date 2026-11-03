@@ -1,0 +1,237 @@
+#!/usr/bin/python3
+"""ns-secure: command-line client for the NullOS Security Center (talks to nullos-secd)."""
+import json, os, socket, subprocess, sys, time
+
+SOCK = os.environ.get("NULLOS_SOCK", "/run/nullos/secd.sock")
+SUMMARY = os.environ.get("NULLOS_SUMMARY", "/run/nullos/status.json")
+LABEL = {"verified": "VERIFIED", "active": "ACTIVE", "inactive": "INACTIVE", "unsupported": "UNSUPPORTED",
+         "failed": "FAILED", "unknown": "UNKNOWN", "degraded": "DEGRADED"}
+TTY = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+COL = {"verified": "32", "active": "36", "inactive": "90", "unsupported": "90", "failed": "31", "unknown": "33", "degraded": "33"}
+KILL_RULES = ("table inet nullos_kill\ndelete table inet nullos_kill\ntable inet nullos_kill {\n"
+              "  chain input { type filter hook input priority -20; policy drop; iifname \"lo\" accept; }\n"
+              "  chain output { type filter hook output priority -20; policy drop; oifname \"lo\" accept; }\n"
+              "  chain forward { type filter hook forward priority -20; policy drop; }\n}\n")
+
+
+def paint(st):
+    t = "%-11s" % LABEL.get(st, st.upper())
+    return "\033[%sm%s\033[0m" % (COL.get(st, "0"), t) if TTY else t
+
+
+class Down(Exception):
+    pass
+
+
+def call(verb, **args):
+    s = socket.socket(socket.AF_UNIX)
+    s.settimeout(180)
+    try:
+        s.connect(SOCK)
+    except (FileNotFoundError, ConnectionRefusedError):
+        raise Down("the security service (nullos-secd) is not running")
+    except PermissionError:
+        raise Down("permission denied on %s: you must be in the 'sudo' group" % SOCK)
+    s.sendall((json.dumps({"verb": verb, "args": args}) + "\n").encode())
+    buf = b""
+    while not buf.endswith(b"\n"):
+        c = s.recv(65536)
+        if not c:
+            break
+        buf += c
+    r = json.loads(buf or b"{}")
+    if not r.get("ok"):
+        raise SystemExit("error: %s" % r.get("error", "unknown"))
+    return r["result"]
+
+
+def show_checks(checks, areas=None):
+    names = {"network": "NETWORK", "system": "SYSTEM", "apps": "APPLICATIONS", "credentials": "CREDENTIALS", "host": "HOST INTEGRATION", "labs": "LAB ENVIRONMENTS"}
+    for area, title in names.items():
+        rows = [c for c in checks if c["area"] == area and (not areas or area in areas)]
+        if not rows:
+            continue
+        print("\n%s" % title)
+        for c in rows:
+            print("  %-34s %s %s" % (c["title"], paint(c["status"]), c["detail"]))
+            for l in c.get("limits", []):
+                print("  %-34s %s  note: %s" % ("", " " * 11, l)) if os.environ.get("NS_VERBOSE") else None
+
+
+def cmd_status(a):
+    try:
+        r = call("status")
+    except Down as e:
+        print("SECURITY CENTER\n\n  Security service   %s %s\n\n  Protections can NOT be verified while the service is down.\n"
+              "  Firewall rules already loaded in the kernel stay in force; start it with: sudo systemctl start nullos-secd" % (paint("failed"), e))
+        return 2
+    if "--json" in a:
+        print(json.dumps(r, indent=1)); return 0
+    on = r["mode"] == "restricted"
+    print("NULL OS                                   SECURITY CENTER")
+    print("\nRESTRICTED MODE   %s" % (("ON   (%s)" % LABEL[r["overall"]]) if on else "OFF"))
+    print("Profile           %s %s" % (r["profile_name"], ("v" + r["profile_version"]) if r.get("profile_version") else ""))
+    if r["kill"]:
+        print("EMERGENCY DISCONNECT is ENGAGED: all network traffic is denied.  Release: ns-secure release")
+    if r.get("fallback_deny"):
+        print("FALLBACK DENY engaged by the profile failure policy (protection could not be verified).")
+    show_checks(r["checks"])
+    print()
+    return 0
+
+
+def cmd_transition(r):
+    for p in r.get("phases", []):
+        print("  %-14s %s  %s" % (p["phase"], "ok  " if p["ok"] else "FAIL", p["detail"]))
+    if r.get("checks"):
+        show_checks([c for c in r["checks"] if c["area"] in ("network", "host")])
+    ov = r.get("overall")
+    print("\nOverall status: %s" % paint(ov).strip())
+    if not r.get("ok") and ov in ("degraded", "failed"):
+        print("Restricted Mode is NOT fully verified. Review the lines above; 'ns-secure logs' has details.")
+    return 0 if r.get("ok") else 1
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        print(__doc__ + """
+  status [--json]                 Security Center view (what is really in force)
+  enable [profile]                turn Restricted Mode on (default: restricted-network)
+  disable                         back to Standard (baseline protections stay)
+  restore                         re-apply the current profile exactly as defined
+  verify                          re-inspect everything now
+  profiles                        list profiles (Standard, Restricted Network, Privacy-Focused, Isolated Lab, Custom)
+  custom [show | key=value ...]   choose individual controls, then: ns-secure enable custom
+  kill [--keep-links] | release   emergency disconnect / release
+  changes                         what the last transition changed
+  logs [-n N] [--kind K]          security event log
+  audit [users|packages|updates|services|listening|config|privileged|credentials|environment|mounts|sudo|apparmor|all]
+  connections | routes | mac      network visibility, IP & route protection, MAC state
+  creds fix                       tighten loose permissions on credential files
+  baseline accept                 accept current state of monitored files
+  panel                           one-line status (used by the panel)""")
+        return 0
+    c, a = argv[0], argv[1:]
+    try:
+        if c == "status":
+            return cmd_status(a)
+        if c == "panel":
+            return panel()
+        if c == "enable":
+            prof = a[0] if a else "restricted-network"
+            print("Enabling %s ..." % prof)
+            r = call("enable", profile=prof)
+            rc = cmd_transition(r)
+            return rc
+        if c == "disable":
+            r = call("disable"); rc = cmd_transition(r)
+            if os.environ.get("DISPLAY"):
+                subprocess.Popen(["ns-autostart"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return rc
+        if c == "restore":
+            return cmd_transition(call("restore"))
+        if c == "verify":
+            return cmd_status(a)
+        if c == "profiles":
+            for p in call("profiles"):
+                print("%-20s v%-6s %s%s\n   %s\n   controls: %s\n" % (p["id"], p["version"], p["source"], "  [recommended]" if p["recommended"] else "", p["description"], ", ".join(p["controls"]) or "(baseline only)"))
+            return 0
+        if c == "custom":
+            if not a or a[0] == "show":
+                r = call("custom_get")
+                if "--json" in a:
+                    print(json.dumps(r)); return 0
+                for k, v in sorted(r["toggles"].items()):
+                    print("%-14s %-8s %s" % (k, v, ("choices: " + "/".join(r["choices"][k])) if k in r["choices"] else ""))
+                return 0
+            t = {}
+            for kv in a:
+                k, _, v = kv.partition("=")
+                t[k] = True if v in ("on", "true", "yes", "1") else False if v in ("off", "false", "no", "0") else v
+            r = call("custom_set", toggles=t); print("custom profile saved. Apply with: ns-secure enable custom"); return 0
+        if c == "kill":
+            try:
+                r = call("kill", disconnect="--keep-links" not in a)
+            except Down:
+                print("service down: applying the deny rules directly with sudo (UNVERIFIED)")
+                rc = subprocess.run(["sudo", "-n", "nft", "-f", "-"], input=KILL_RULES, text=True).returncode
+                print("deny rules loaded (unverified)" if rc == 0 else "FAILED to load deny rules"); return rc
+            print("%s %s" % (paint(r["check"]["status"]), r["check"]["detail"])); return 0 if r["ok"] else 1
+        if c == "release":
+            r = call("release"); print(r["detail"]); return 0
+        if c == "changes":
+            r = call("changes")
+            print("profile %s, applied %s" % (r["profile"], time.strftime("%F %T", time.localtime(r["applied_at"])) if r["applied_at"] else "never"))
+            for x in r["changes"]:
+                print("  [%s] %s\n       undo: %s" % (x["control"], x["what"], x["revert"]))
+            if not r["changes"]:
+                print("  (no Restricted Mode changes in force)")
+            return 0
+        if c == "logs":
+            n = int(a[a.index("-n") + 1]) if "-n" in a else 40
+            kind = a[a.index("--kind") + 1] if "--kind" in a else None
+            for r in call("logs", n=n, kind=kind):
+                print("%s %-5s %-13s %s" % (time.strftime("%F %T", time.localtime(r["ts"])), r["level"], r["kind"], r["msg"]))
+            return 0
+        if c == "audit":
+            for r in call("audit", name=a[0] if a else "all"):
+                print("%s %-34s %s" % (paint(r["status"]), r["title"], r["detail"]))
+                for l in r.get("limits", []):
+                    print("            note: " + l)
+                d = r.get("data")
+                if isinstance(d, list):
+                    for x in d[:60]:
+                        print("            - " + (x if isinstance(x, str) else "  ".join("%s=%s" % (k, v) for k, v in x.items() if v not in (None, "", False))))
+                elif isinstance(d, dict):
+                    for k, v in d.items():
+                        for p in v[:30]:
+                            print("            %s: %s" % (k, p))
+            return 0
+        if c == "connections":
+            for s in call("connections"):
+                print("%-5s %-9s %-26s -> %-26s %s" % (s["proto"], s["state"], s["local"], s["peer"], ("%s[%s]" % (s["process"], s["pid"])) if s["process"] else "-"))
+            return 0
+        if c == "routes":
+            r = call("routes")
+            for x in r["addresses"]:
+                print("%-10s IPv%d  %-40s %s" % (x["dev"], x["family"], x["addr"], x["method"]))
+            for f in ("4", "6"):
+                for d in r["default_routes"][f]:
+                    print("default IPv%s via %s dev %s" % (f, d["via"], d["dev"]))
+            print("VPN interfaces: %s" % (", ".join(r["vpn_interfaces"]) or "none"))
+            for n in r["notes"]:
+                print("WARNING: " + n)
+            print("note: " + r["limits"][0]); return 0
+        if c == "mac":
+            r = call("mac"); print("%s %s" % (paint(r["status"]), r["detail"]))
+            for x in (r.get("data") or []):
+                print("   %-10s current %s  hardware %s  randomized=%s" % (x["dev"], x["current"], x["permanent"], x["randomized"]))
+            return 0
+        if c == "creds" and a[:1] == ["fix"]:
+            r = call("cred_fix"); print("tightened %d path(s)" % len(r["fixed"])); [print("  " + p) for p in r["fixed"]]; [print("  skipped " + p) for p in r["skipped"]]; return 0
+        if c == "baseline" and a[:1] == ["accept"]:
+            print("baseline accepted for %d files" % call("baseline_accept")["files"]); return 0
+    except Down as e:
+        print("error: %s" % e); return 2
+    print("unknown command; try: ns-secure help"); return 1
+
+
+def panel():
+    """Cheap, honest panel text. Reads the summary the service writes; never trusts a stale one."""
+    try:
+        d = json.load(open(SUMMARY))
+        stale = time.time() - d["ts"] > 300
+    except (OSError, ValueError, KeyError):
+        d, stale = None, True
+    if stale:
+        print("<span foreground='#e5484d'>[ sec ? ]</span>"); return 0
+    if d["kill"]:
+        print("<span foreground='#e5484d'>[ sec: DISCONNECTED ]</span>"); return 0
+    if d["mode"] != "restricted":
+        print("<span foreground='#c8c8c8'>[ sec ]</span>" if d["overall"] in ("verified", "active") else "<span foreground='#e5a84d'>[ sec ! ]</span>"); return 0
+    col = {"verified": "#3ecf8e", "active": "#3ecf8e", "degraded": "#e5a84d", "failed": "#e5484d"}.get(d["overall"], "#e5a84d")
+    print("<span foreground='%s'>[ sec: RESTRICTED %s ]</span>" % (col, d["overall"].upper())); return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

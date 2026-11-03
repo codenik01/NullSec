@@ -1,0 +1,308 @@
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+index 602231a..53284da 100644
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -10,6 +10,17 @@ permissions:
+   contents: write
+ 
+ jobs:
++  # Runs the Security Center tests against a real kernel. Not gating the build until you have seen it pass on your runners
++  # (to gate: add `needs: test` to the build job).
++  test:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++      - name: install test dependencies
++        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 bubblewrap jq iputils-ping shellcheck
++      - name: run tests
++        run: sudo bash tests/run-all.sh
++
+   iso:
+     strategy:
+       fail-fast: false
+@@ -38,11 +49,11 @@ jobs:
+         uses: actions/upload-artifact@v4
+         with:
+           name: nullos-${{ matrix.arch }}
+-          path: out/*.iso
++          path: out/nullos-*
+           compression-level: 0
+ 
+       - name: release (tags only)
+         if: startsWith(github.ref, 'refs/tags/')
+         uses: softprops/action-gh-release@v2
+         with:
+-          files: out/*.iso
++          files: out/nullos-*
+diff --git a/README.md b/README.md
+index ca44e89..173820b 100644
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,4 @@
+-# NullOS (v4)
++# NullOS 2.0 (build kit v5)
+ Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with Hyprland-style gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away.
+ 
+ ## Login
+@@ -23,10 +23,18 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
+ ## Look
+ `ns-theme red|blue|green|<hex>` recolours panel, borders, menus, terminal, GTK apps, prompt, fastfetch/neofetch logo. `ns-wallpaper` picks the wallpaper (default = NullOS Cyber Fortress). `ns-mode tiling|floating` switches layout. `ns-fx off` disables fade effects. `ns-dpi 144` for Retina text.
+ 
++## Security Center (new in 2.0), Super+S
++One switch for **Restricted Mode** plus profiles, an emergency disconnect, audits, sandboxes and labs, with every status *verified* against the real system.
++`ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Full guide and limits: `docs/SECURITY.md`. Tests: `sudo bash tests/run-all.sh`.
++
+ ## Build
+ `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
+ 
+-## Changelog 1.0 (final)
++## Changelog 2.0
++- NEW Security Center + `nullos-secd` service, 4 profiles + custom, verification engine, kill switch, drift repair, lab networks, `ns-sandbox`, credential/privilege/service/user/package audits, `ns-pack` search/info/profiles, `ns-offline`, release metadata.
++- Existing files touched (all small, see docs/CHANGES-existing-files.patch): `ns-start`, `ns-genmenu` (+Security Center; `firefox-esr` -> `ns-browser`), `ns-autostart` (respect clipboard block), i3 config (Super+S), tint2 (live status item), `ns-install` (+prowler, scoutsuite), `packages.txt` (+bubblewrap), `build-iso.sh`, workflow. `/etc/nftables.conf` is unchanged.
++
++## Changelog 1.0
+ - Sound fixed: dbus-user-session + rtkit added (the audio manager could not start without a user session bus). Live user is in the audio/video groups, card is unmuted at login (`ns-audio fix|test|status`).
+ - Shutdown/reboot no longer waits for ENTER ("remove the installation medium"); shorter systemd stop timeouts.
+ - No more busy/spinning cursor after launching apps (startup notification disabled in i3, Openbox and the panel).
+diff --git a/build-iso.sh b/build-iso.sh
+index 6514f3a..8f341b8 100755
+--- a/build-iso.sh
++++ b/build-iso.sh
+@@ -70,6 +70,11 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
+ # NOTE: a regular file, never a symlink to the binary (that overwrote lightdm once)
+ rm -f /etc/X11/default-display-manager; echo /usr/sbin/lightdm > /etc/X11/default-display-manager
+ systemctl enable lightdm NetworkManager nftables nullos-groups >/dev/null 2>&1 || true
++# NullOS Security Center: enable the service and refuse to build an image where it cannot work
++chmod +x /usr/lib/nullos/nullos-secd
++python3 -m compileall -q /usr/lib/nullos || { echo "FATAL: nullos-secd does not compile"; exit 1; }
++/usr/lib/nullos/nullos-secd --selftest || { echo "FATAL: nullos-secd selftest failed"; exit 1; }
++systemctl enable nullos-secd >/dev/null 2>&1 || { echo "FATAL: cannot enable nullos-secd"; exit 1; }
+ systemctl set-default graphical.target
+ for s in bluetooth cups cups-browsed avahi-daemon ModemManager apport snapd; do systemctl disable $s 2>/dev/null || true; systemctl mask $s 2>/dev/null || true; done
+ sed -i 's/^NAME=.*/NAME="NullOS"/' /etc/os-release
+@@ -90,8 +95,8 @@ for p in casper lightdm lightdm-gtk-greeter i3-wm openbox dbus-user-session; do
+   dpkg -s $p 2>/dev/null | grep -q 'Status: install ok installed' || { echo "FATAL: $p is not installed"; exit 1; }
+ done
+ chmod -x /etc/update-motd.d/* 2>/dev/null || true
+-sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="NullOS 1.0"/; s/^VERSION=.*/VERSION="1.0"/' /etc/os-release
+-echo "NullOS 1.0" > /etc/nullos-release
++sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="NullOS 2.0"/; s/^VERSION=.*/VERSION="2.0"/' /etc/os-release
++echo "NullOS 2.0" > /etc/nullos-release
+ update-initramfs -u -k all
+ rm -f /usr/sbin/policy-rc.d /pkgs.txt /fin.sh
+ apt-get clean; rm -rf /var/lib/apt/lists/* /var/cache/apt/*.bin /usr/share/doc/* /usr/share/info/* /tmp/* /root/.cache /var/log/apt/* 2>/dev/null || true
+@@ -104,9 +109,13 @@ echo "== 4/6 sanity checks"
+ chroot "$R" /bin/bash -c 'lsinitramfs /boot/initrd.img-* | grep -q "scripts/casper"' || { echo "FATAL: casper missing from initramfs"; exit 1; }
+ head -c4 "$R/usr/sbin/lightdm" | grep -q ELF || { echo "FATAL: /usr/sbin/lightdm is not a binary"; exit 1; }
+ [ -f "$R/etc/X11/default-display-manager" ] && [ ! -L "$R/etc/X11/default-display-manager" ] || { echo "FATAL: default-display-manager"; exit 1; }
+-for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
++for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber bwrap jq nft; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
+ K=$(ls -1 "$R"/boot/vmlinuz-* | sort -V | tail -1); I=$(ls -1 "$R"/boot/initrd.img-* | sort -V | tail -1)
+ cp "$K" "$ISO/casper/vmlinuz"; cp "$I" "$ISO/casper/initrd"; chmod 644 "$ISO/casper/vmlinuz"
++[ -x "$R/usr/lib/nullos/nullos-secd" ] && [ -f "$R/etc/systemd/system/nullos-secd.service" ] && [ -f "$R/usr/share/nullos/profiles/restricted-network.json" ] \
++  || { echo "FATAL: Security Center files missing from the image"; exit 1; }
++INSTALLED_BYTES=$(du -sb "$R" | cut -f1)
++dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' | sort > "$OUT/nullos-$ARCH.packages.txt"
+ cleanup
+ 
+ echo "== 5/6 compress"
+@@ -142,3 +151,26 @@ EOF
+ echo "== 6/6 iso"
+ grub-mkrescue -o "$OUT/nullos-$ARCH.iso" "$ISO" -- -volid NULLOS
+ ls -lh "$OUT/nullos-$ARCH.iso"
++# release metadata: exact sizes are measured, never assumed (design target ~1.4 GB for the ISO)
++ISO_BYTES=$(stat -c %s "$OUT/nullos-$ARCH.iso"); SQ_BYTES=$(stat -c %s "$ISO/casper/filesystem.squashfs")
++( cd "$OUT" && sha256sum "nullos-$ARCH.iso" > "nullos-$ARCH.iso.sha256" )
++ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
++import hashlib, json, os, subprocess, time
++out, arch = os.environ["OUT"], os.environ["ARCH"]
++iso = os.path.join(out, "nullos-%s.iso" % arch)
++h = hashlib.sha256()
++with open(iso, "rb") as f:
++    for c in iter(lambda: f.read(1 << 20), b""): h.update(c)
++try: commit = subprocess.check_output(["git", "-C", os.environ["HERE"], "rev-parse", "--short", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
++except Exception: commit = None
++pk = open(os.path.join(out, "nullos-%s.packages.txt" % arch)).read().count("\n")
++target = 1_400_000_000
++json.dump({"name": "NullOS", "version": "2.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
++           "iso_bytes": int(os.environ["ISO_BYTES"]), "iso_sha256": h.hexdigest(), "squashfs_bytes": int(os.environ["SQ_BYTES"]),
++           "installed_bytes_uncompressed": int(os.environ["INSTALLED_BYTES"]), "package_count": pk, "design_target_iso_bytes": target,
++           "within_design_target": int(os.environ["ISO_BYTES"]) <= target,
++           "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "not applicable (live image)",
++                       "offline_operation": "base system and bundled tools yes; ns-pack, updates and online services need internet"}},
++          open(os.path.join(out, "nullos-%s.release.json" % arch), "w"), indent=1)
++print("release metadata written: nullos-%s.release.json" % arch)
++PY
+diff --git a/overlay/etc/skel/.config/i3/config b/overlay/etc/skel/.config/i3/config
+index 17f56ae..a412afb 100644
+--- a/overlay/etc/skel/.config/i3/config
++++ b/overlay/etc/skel/.config/i3/config
+@@ -39,6 +39,8 @@ bindsym $mod+space exec --no-startup-id ns-start
+ bindsym $alt+space exec --no-startup-id ns-start
+ bindsym $mod+t exec --no-startup-id ns-menu
+ bindsym $alt+t exec --no-startup-id ns-menu
++bindsym $mod+s exec --no-startup-id ns-security
++bindsym $alt+s exec --no-startup-id ns-security
+ bindsym $mod+n exec --no-startup-id ns-net
+ bindsym $alt+n exec --no-startup-id ns-net
+ bindsym $mod+b exec --no-startup-id ns-browser
+diff --git a/overlay/etc/skel/.config/tint2/tint2rc b/overlay/etc/skel/.config/tint2/tint2rc
+index 7173f3e..8e592be 100644
+--- a/overlay/etc/skel/.config/tint2/tint2rc
++++ b/overlay/etc/skel/.config/tint2/tint2rc
+@@ -4,7 +4,7 @@ background_color = #0a0a0a 100
+ border_color = #1c1c1c 100
+ 
+ startup_notifications = 0
+-panel_items = PPPPTSC
++panel_items = PPPPETSC
+ panel_position = top center horizontal
+ panel_size = 100% 28
+ panel_margin = 0 0
+@@ -71,3 +71,17 @@ button_padding = 6 0 4
+ button_background_id = 0
+ button_lclick_command = ns-menu
+ button_rclick_command = rofi -show run
++
++execp = new
++execp_command = ns-secure panel
++execp_interval = 5
++execp_has_icon = 0
++execp_markup = 1
++execp_continuous = 0
++execp_font = JetBrains Mono 9
++execp_font_color = #c8c8c8 100
++execp_padding = 6 0 4
++execp_background_id = 0
++execp_tooltip = Security Center (click to open)
++execp_lclick_command = ns-security
++execp_rclick_command = ns-term ns-secure status
+diff --git a/overlay/usr/local/bin/ns-autostart b/overlay/usr/local/bin/ns-autostart
+index 3f6e17c..66bfa40 100755
+--- a/overlay/usr/local/bin/ns-autostart
++++ b/overlay/usr/local/bin/ns-autostart
+@@ -12,7 +12,7 @@ run dunst
+ run xfsettingsd
+ run tint2
+ run nm-applet
+-run spice-vdagent
++[ -e /run/nullos/block-clipboard ] || run spice-vdagent
+ run xfce4-power-manager
+ run pasystray
+ ( sleep 5; ns-audio fix >/dev/null 2>&1 ) &
+diff --git a/overlay/usr/local/bin/ns-genmenu b/overlay/usr/local/bin/ns-genmenu
+index 36e6ec7..a5b903f 100755
+--- a/overlay/usr/local/bin/ns-genmenu
++++ b/overlay/usr/local/bin/ns-genmenu
+@@ -6,7 +6,7 @@ T=/usr/share/nullsec/tools.tsv; OUT=${1:-$HOME/.config/openbox/menu.xml}
+ echo '<?xml version="1.0" encoding="UTF-8"?><openbox_menu xmlns="http://openbox.org/3.4/menu">'
+ echo '<menu id="root-menu" label="nullsec">'
+ echo '<item label="terminal"><action name="Execute"><command>ns-term</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+-echo '<item label="browser"><action name="Execute"><command>firefox-esr</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
++echo '<item label="browser"><action name="Execute"><command>ns-browser</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+ echo '<item label="run..."><action name="Execute"><command>rofi -show run</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+ echo '<separator/>'
+ for c in $(cut -f1 $T | sort -u); do
+@@ -16,6 +16,7 @@ for c in $(cut -f1 $T | sort -u); do
+ done
+ echo '<separator/>'
+ echo '<item label="network"><action name="Execute"><command>ns-net</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
++echo '<item label="security center"><action name="Execute"><command>ns-security</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+ echo '<menu id="m-theme" label="theme">'
+ for t in red blue green; do echo "<item label=\"$t\"><action name=\"Execute\"><command>ns-theme $t</command><startupnotify><enabled>no</enabled></startupnotify></action></item>"; done
+ echo '</menu>'
+diff --git a/overlay/usr/local/bin/ns-install b/overlay/usr/local/bin/ns-install
+index 620984b..b08cf25 100755
+--- a/overlay/usr/local/bin/ns-install
++++ b/overlay/usr/local/bin/ns-install
+@@ -31,6 +31,8 @@ case "$1" in
+   impacket) apt_i pipx; pipx install impacket;;
+   bloodhound) apt_i pipx; pipx install bloodhound;;
+   volatility3) apt_i pipx; pipx install volatility3;;
++  prowler) apt_i pipx; pipx install prowler;;
++  scoutsuite) apt_i pipx; pipx install scoutsuite;;
+   evil-winrm) apt_i ruby ruby-dev build-essential; $S gem install evil-winrm;;
+   seclists) apt_i git ca-certificates; $S git clone --depth 1 https://github.com/danielmiessler/SecLists /usr/share/seclists;;
+   firefox) apt_i wget gnupg ca-certificates; $S install -d -m755 /etc/apt/keyrings
+diff --git a/overlay/usr/local/bin/ns-pack b/overlay/usr/local/bin/ns-pack
+index 65f43d4..49f1173 100755
+--- a/overlay/usr/local/bin/ns-pack
++++ b/overlay/usr/local/bin/ns-pack
+@@ -1,9 +1,41 @@
+ #!/usr/bin/env bash
+ unset DESKTOP_STARTUP_ID
+-# ns-pack list | add <name|apt:pkg|any-apt-package> | rm <pkg>
+-case "$1" in
+-  list) echo "installers: subfinder httpx nuclei amass nikto responder exploitdb netexec impacket bloodhound volatility3 evil-winrm seclists firefox metasploit ghidra"; echo "or: ns-pack add apt:<package>";;
+-  add)  ns-install "$2";;
+-  rm)   sudo apt-get purge -y "$2" && sudo apt-get autoremove -y;;
+-  *)    echo "usage: ns-pack list | add <name|apt:pkg> | rm <pkg>";;
++# ns-pack: tool manager (Ubuntu-compatible sources only; no Kali/Parrot repositories)
++#   list | profiles | search TERM | info NAME | install NAME|PROFILE|apt:PKG | remove PKG | update
++#   (add = install, rm = remove: the original commands keep working)
++T=/usr/share/nullsec/tools.tsv; K=/usr/share/nullsec/packs.tsv
++profiles() { cut -f1 "$K" | sort -u; }
++spec_of() { awk -F'\t' -v x="$1" '$2==x{print $4; exit}' "$T"; }
++installed() { # installed? for a spec
++  case "$1" in apt:*) dpkg -s "${1#apt:}" 2>/dev/null | grep -q 'Status: install ok installed';; *) command -v "$1" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$1" ];; esac; }
++case "${1:-}" in
++  list)
++    echo "installers: subfinder httpx nuclei amass nikto responder exploitdb netexec impacket bloodhound volatility3 evil-winrm seclists firefox metasploit ghidra prowler scoutsuite"
++    echo "profiles:   $(profiles | tr '\n' ' ')all"
++    echo "or: ns-pack add apt:<package>   |   ns-pack search <term>   |   ns-pack info <name>";;
++  profiles) for p in $(profiles); do printf '%-10s %s\n' "$p" "$(awk -F'\t' -v p="$p" '$1==p{printf "%s ",$2}' "$K" | sed 's/apt://g')"; done; echo "all        every profile above";;
++  search)
++    [ -n "${2:-}" ] || { echo "usage: ns-pack search TERM"; exit 2; }
++    echo "-- NullOS tool list"; grep -i -- "$2" "$T" | awk -F'\t' '{printf "%-10s %-20s %s\n",$1,$2,$3}'
++    echo "-- Ubuntu archive"; apt-cache search -- "$2" 2>/dev/null | head -15 || true
++    compgen -G '/var/lib/apt/lists/*Packages*' >/dev/null || echo "(no package index yet: run ns-pack update, needs internet)";;
++  info)
++    n=${2:-}; [ -n "$n" ] || { echo "usage: ns-pack info NAME"; exit 2; }
++    row=$(awk -F'\t' -v x="$n" '$2==x{print; exit}' "$T")
++    [ -n "$row" ] && awk -F'\t' '{printf "name:      %s\ncategory:  %s\nabout:     %s\ninstaller: %s\n",$2,$1,$3,$4}' <<<"$row"
++    s=$(spec_of "$n"); [ -n "$s" ] || s="apt:$n"
++    if installed "$s" || installed "$n"; then echo "installed: yes"; else echo "installed: no"; fi
++    case "$s" in apt:*) apt-cache policy "${s#apt:}" 2>/dev/null | sed -n '1,3p';; esac;;
++  install|add)
++    n=${2:-}; [ -n "$n" ] || { echo "usage: ns-pack install NAME|PROFILE|apt:PKG"; exit 2; }
++    if [ "$n" = all ]; then list=$(cut -f2 "$K" | sort -u); elif profiles | grep -qx "$n"; then list=$(awk -F'\t' -v p="$n" '$1==p{print $2}' "$K"); else list=""; fi
++    if [ -n "$list" ]; then
++      ok=0; fail=0; for s in $list; do
++        if installed "$s"; then echo "have    $s"; continue; fi
++        if ns-install "$s"; then ok=$((ok+1)); else echo "FAILED  $s"; fail=$((fail+1)); fi
++      done; echo "profile $n: $ok installed, $fail failed"; [ $fail -eq 0 ]
++    else ns-install "$n"; fi;;
++  remove|rm) [ -n "${2:-}" ] || { echo "usage: ns-pack remove PKG"; exit 2; }; sudo apt-get purge -y "$2" && sudo apt-get autoremove -y;;
++  update) sudo apt-get update;;
++  *) echo "usage: ns-pack list | profiles | search TERM | info NAME | install NAME|PROFILE|apt:PKG | remove PKG | update";;
+ esac
+diff --git a/overlay/usr/local/bin/ns-start b/overlay/usr/local/bin/ns-start
+index bed4117..9fbc2ed 100755
+--- a/overlay/usr/local/bin/ns-start
++++ b/overlay/usr/local/bin/ns-start
+@@ -2,7 +2,7 @@
+ unset DESKTOP_STARTUP_ID
+ # NullOS start menu (logo button / Super+Space): apps, settings, power. Everything is clickable.
+ sub() { rofi -dmenu -i -p "$1"; }
+-c=$(printf '%s\n' "Applications" "Files" "Terminal" "Browser" "Text editor" "Calculator" "PDF viewer" "Images" "Archives" "Task manager" "Screenshot" "Security tools" "Network / Wi-Fi" "Settings >" "Power >" | sub nullos) || exit 0
++c=$(printf '%s\n' "Applications" "Files" "Terminal" "Browser" "Text editor" "Calculator" "PDF viewer" "Images" "Archives" "Task manager" "Screenshot" "Security tools" "Security Center" "Network / Wi-Fi" "Settings >" "Power >" | sub nullos) || exit 0
+ case "$c" in
+   Applications) exec rofi -show drun;;
+   Files) exec thunar;;
+@@ -16,6 +16,7 @@ case "$c" in
+   "Task manager") exec xfce4-taskmanager;;
+   Screenshot) exec xfce4-screenshooter;;
+   "Security tools") exec ns-menu;;
++  "Security Center") exec ns-security;;
+   "Network / Wi-Fi") exec ns-net;;
+   "Settings >") exec ns-settings;;
+   "Power >") exec ns-power;;
+diff --git a/packages.txt b/packages.txt
+index 36baadf..38ab60c 100644
+--- a/packages.txt
++++ b/packages.txt
+@@ -15,3 +15,4 @@ nmap masscan ffuf gobuster whatweb sqlmap hydra john aircrack-ng hcxtools hcxdum
+ gdb radare2 binwalk foremost libimage-exiftool-perl python3-pwntools python3-impacket
+ pipewire-audio libspa-0.2-modules pasystray fonts-dejavu-core fonts-liberation xdg-user-dirs
+ dbus-user-session rtkit
++bubblewrap

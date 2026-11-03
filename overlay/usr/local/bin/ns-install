@@ -31,6 +31,8 @@ case "$1" in
   impacket) apt_i pipx; pipx install impacket;;
   bloodhound) apt_i pipx; pipx install bloodhound;;
   volatility3) apt_i pipx; pipx install volatility3;;
+  prowler) apt_i pipx; pipx install prowler;;
+  scoutsuite) apt_i pipx; pipx install scoutsuite;;
   evil-winrm) apt_i ruby ruby-dev build-essential; $S gem install evil-winrm;;
   seclists) apt_i git ca-certificates; $S git clone --depth 1 https://github.com/danielmiessler/SecLists /usr/share/seclists;;
   firefox) apt_i wget gnupg ca-certificates; $S install -d -m755 /etc/apt/keyrings

@@ -12,7 +12,7 @@ run dunst
 run xfsettingsd
 run tint2
 run nm-applet
-run spice-vdagent
+[ -e /run/nullos/block-clipboard ] || run spice-vdagent
 run xfce4-power-manager
 run pasystray
 ( sleep 5; ns-audio fix >/dev/null 2>&1 ) &

@@ -4,7 +4,7 @@ background_color = #0a0a0a 100
 border_color = #1c1c1c 100
 
 startup_notifications = 0
-panel_items = PPPPTSC
+panel_items = PPPPETSC
 panel_position = top center horizontal
 panel_size = 100% 28
 panel_margin = 0 0
@@ -71,3 +71,17 @@ button_padding = 6 0 4
 button_background_id = 0
 button_lclick_command = ns-menu
 button_rclick_command = rofi -show run
+
+execp = new
+execp_command = ns-secure panel
+execp_interval = 5
+execp_has_icon = 0
+execp_markup = 1
+execp_continuous = 0
+execp_font = JetBrains Mono 9
+execp_font_color = #c8c8c8 100
+execp_padding = 6 0 4
+execp_background_id = 0
+execp_tooltip = Security Center (click to open)
+execp_lclick_command = ns-security
+execp_rclick_command = ns-term ns-secure status
