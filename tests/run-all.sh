@@ -28,5 +28,6 @@ step "build-script fragments (end-of-build shell under set -euo pipefail)"; bash
 step "apt lock wait (tool packs)"; bash tests/apt_wait.sh | grep -E "FAIL|APTWAIT"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "installer configuration (schemas, ordering, shell steps)"; python3 -B tests/installer_test.py | grep -E "FAIL|SKIPPED|RESULT"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "installer: real Calamares starts on the config (headless)"; bash tests/calamares_smoke.sh | grep -E "FAIL|SKIP|CALSMOKE"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
+step "package list (regression: comments were parsed as package names)"; bash tests/packages_test.sh | grep -E "FAIL|SKIP|WARN|PACKAGES"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "sandbox + lab + pack tests"; bash tests/sandbox.sh | grep -E "FAIL|SKIP|SANDBOX"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 echo; [ $fail -eq 0 ] && echo "ALL TEST GROUPS PASSED" || echo "SOME TESTS FAILED"; exit $fail

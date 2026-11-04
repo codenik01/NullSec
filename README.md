@@ -30,6 +30,9 @@ One switch for **Restricted Mode** plus profiles, an emergency disconnect, audit
 ## Build
 `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
 
+## Changelog 2.0.3
+- FIX build: a comment in `packages.txt` was parsed as package names (broke the arm64/amd64 build). The build now ignores `#` comments, the comment is gone, and `tests/packages_test.sh` guards it.
+
 ## Changelog 2.0.2
 - NEW **Graphical installer** (Calamares): start menu > Install NullOS (live session only). Offline, UEFI+BIOS, NullOS-branded. See `docs/INSTALLER.md` (includes what still needs a real-install test).
 - FIX the installed system must not inherit live-only settings: lightdm auto-login of `ns` and the `ns`-only sudo rule are rewritten during install.

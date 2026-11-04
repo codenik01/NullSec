@@ -35,7 +35,7 @@ index 602231a..6e4bcaa 100644
 -          files: out/*.iso
 +          files: out/nullos-*
 diff --git a/README.md b/README.md
-index ca44e89..4abcf35 100644
+index ca44e89..39e7524 100644
 --- a/README.md
 +++ b/README.md
 @@ -1,4 +1,4 @@
@@ -44,7 +44,7 @@ index ca44e89..4abcf35 100644
  Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with Hyprland-style gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away.
  
  ## Login
-@@ -23,10 +23,29 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
+@@ -23,10 +23,32 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
  ## Look
  `ns-theme red|blue|green|<hex>` recolours panel, borders, menus, terminal, GTK apps, prompt, fastfetch/neofetch logo. `ns-wallpaper` picks the wallpaper (default = NullOS Cyber Fortress). `ns-mode tiling|floating` switches layout. `ns-fx off` disables fade effects. `ns-dpi 144` for Retina text.
  
@@ -56,6 +56,9 @@ index ca44e89..4abcf35 100644
  `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
  
 -## Changelog 1.0 (final)
++## Changelog 2.0.3
++- FIX build: a comment in `packages.txt` was parsed as package names (broke the arm64/amd64 build). The build now ignores `#` comments, the comment is gone, and `tests/packages_test.sh` guards it.
++
 +## Changelog 2.0.2
 +- NEW **Graphical installer** (Calamares): start menu > Install NullOS (live session only). Offline, UEFI+BIOS, NullOS-branded. See `docs/INSTALLER.md` (includes what still needs a real-install test).
 +- FIX the installed system must not inherit live-only settings: lightdm auto-login of `ns` and the `ns`-only sudo rule are rewritten during install.
@@ -76,9 +79,18 @@ index ca44e89..4abcf35 100644
  - Shutdown/reboot no longer waits for ENTER ("remove the installation medium"); shorter systemd stop timeouts.
  - No more busy/spinning cursor after launching apps (startup notification disabled in i3, Openbox and the panel).
 diff --git a/build-iso.sh b/build-iso.sh
-index 6514f3a..e551872 100755
+index 6514f3a..180dfc1 100755
 --- a/build-iso.sh
 +++ b/build-iso.sh
+@@ -33,7 +33,7 @@ printf '#!/bin/sh\nexit 101\n' > "$R/usr/sbin/policy-rc.d"; chmod +x "$R/usr/sbi
+ echo "== 2/6 packages (names missing on this arch are skipped)"
+ chroot "$R" apt-get update -qq
+ : > "$W/pkgs.ok"
+-for p in $(cat "$HERE/packages.txt"); do
++for p in $(sed 's/#.*//' "$HERE/packages.txt"); do   # comments (#) are ignored
+   if [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; then echo "$p" >> "$W/pkgs.ok"; else echo "skip (not available on $ARCH): $p"; fi
+ done
+ cp "$W/pkgs.ok" "$R/pkgs.txt"
 @@ -70,6 +70,11 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
  # NOTE: a regular file, never a symlink to the binary (that overwrote lightdm once)
  rm -f /etc/X11/default-display-manager; echo /usr/sbin/lightdm > /etc/X11/default-display-manager
@@ -372,17 +384,16 @@ index bed4117..0a93af5 100755
    "Settings >") exec ns-settings;;
    "Power >") exec ns-power;;
 diff --git a/packages.txt b/packages.txt
-index 36baadf..6d9e870 100644
+index 36baadf..27816af 100644
 --- a/packages.txt
 +++ b/packages.txt
-@@ -15,3 +15,22 @@ nmap masscan ffuf gobuster whatweb sqlmap hydra john aircrack-ng hcxtools hcxdum
+@@ -15,3 +15,21 @@ nmap masscan ffuf gobuster whatweb sqlmap hydra john aircrack-ng hcxtools hcxdum
  gdb radare2 binwalk foremost libimage-exiftool-perl python3-pwntools python3-impacket
  pipewire-audio libspa-0.2-modules pasystray fonts-dejavu-core fonts-liberation xdg-user-dirs
  dbus-user-session rtkit
 +bubblewrap
 +apparmor
 +apparmor-utils
-+# --- graphical installer (Calamares) and everything it needs to install OFFLINE, incl. the bootloader itself ---
 +calamares
 +squashfs-tools
 +efibootmgr

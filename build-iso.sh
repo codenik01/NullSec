@@ -33,7 +33,7 @@ printf '#!/bin/sh\nexit 101\n' > "$R/usr/sbin/policy-rc.d"; chmod +x "$R/usr/sbi
 echo "== 2/6 packages (names missing on this arch are skipped)"
 chroot "$R" apt-get update -qq
 : > "$W/pkgs.ok"
-for p in $(cat "$HERE/packages.txt"); do
+for p in $(sed 's/#.*//' "$HERE/packages.txt"); do   # comments (#) are ignored
   if [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; then echo "$p" >> "$W/pkgs.ok"; else echo "skip (not available on $ARCH): $p"; fi
 done
 cp "$W/pkgs.ok" "$R/pkgs.txt"

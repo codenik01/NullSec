@@ -18,7 +18,6 @@ dbus-user-session rtkit
 bubblewrap
 apparmor
 apparmor-utils
-# --- graphical installer (Calamares) and everything it needs to install OFFLINE, incl. the bootloader itself ---
 calamares
 squashfs-tools
 efibootmgr
