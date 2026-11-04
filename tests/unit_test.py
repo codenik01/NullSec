@@ -171,6 +171,24 @@ class Credentials(unittest.TestCase):
         finally: apps.MIN_UID = old; p.kill()
 
 
+class ManagedFiles(unittest.TestCase):
+    """Regression: the Privacy profile wrote two NetworkManager drop-ins and the monitor reported them as
+    'changes since baseline' (a false alarm on the service's own work)."""
+    def test_own_dropins_are_not_flagged(self):
+        os.makedirs(os.path.dirname(net.NM_MAC_CONF), exist_ok=True)
+        svc = service.Service(); svc.state = core.load_state(); svc.state["baseline"] = {}
+        self.assertEqual(sysmon.config_monitor(svc.state)["status"], "verified")       # records baseline
+        open(net.NM_MAC_CONF, "w").write("[connection]\nwifi.cloned-mac-address=random\n")
+        open(net.NM_DNS_CONF, "w").write("[global-dns-domain-*]\nservers=9.9.9.9\n")
+        self.assertEqual(sysmon.config_monitor(svc.state)["status"], "degraded")       # unsynced = would false-alarm
+        svc.sync_managed_baseline()
+        self.assertEqual(sysmon.config_monitor(svc.state)["status"], "verified")       # synced = quiet
+        open(core.P("/etc/hosts"), "w").write("127.0.0.1 evil\n")                      # a REAL foreign change is still caught
+        r = sysmon.config_monitor(svc.state); self.assertEqual(r["status"], "degraded"); self.assertIn("/etc/hosts", json.dumps(r["data"]))
+        os.unlink(net.NM_MAC_CONF); os.unlink(net.NM_DNS_CONF); svc.sync_managed_baseline()
+        self.assertNotIn(net.NM_MAC_CONF[len(core.ROOT):], svc.state["baseline"]["files"])
+
+
 class Monitor(unittest.TestCase):
     def test_config_diff(self):
         d = sysmon.config_diff({"a": "1", "b": "2", "c": "3"}, {"a": "1", "b": "X", "d": "4"})

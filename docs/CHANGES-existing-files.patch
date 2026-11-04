@@ -1,5 +1,5 @@
 diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
-index 602231a..53284da 100644
+index 602231a..6e4bcaa 100644
 --- a/.github/workflows/build.yml
 +++ b/.github/workflows/build.yml
 @@ -10,6 +10,17 @@ permissions:
@@ -13,7 +13,7 @@ index 602231a..53284da 100644
 +    steps:
 +      - uses: actions/checkout@v4
 +      - name: install test dependencies
-+        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 bubblewrap jq iputils-ping shellcheck
++        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 bubblewrap jq iputils-ping shellcheck python3-yaml python3-jsonschema sudo
 +      - name: run tests
 +        run: sudo bash tests/run-all.sh
 +
@@ -35,7 +35,7 @@ index 602231a..53284da 100644
 -          files: out/*.iso
 +          files: out/nullos-*
 diff --git a/README.md b/README.md
-index ca44e89..173820b 100644
+index ca44e89..4abcf35 100644
 --- a/README.md
 +++ b/README.md
 @@ -1,4 +1,4 @@
@@ -44,18 +44,29 @@ index ca44e89..173820b 100644
  Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with Hyprland-style gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away.
  
  ## Login
-@@ -23,10 +23,18 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
+@@ -23,10 +23,29 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
  ## Look
  `ns-theme red|blue|green|<hex>` recolours panel, borders, menus, terminal, GTK apps, prompt, fastfetch/neofetch logo. `ns-wallpaper` picks the wallpaper (default = NullOS Cyber Fortress). `ns-mode tiling|floating` switches layout. `ns-fx off` disables fade effects. `ns-dpi 144` for Retina text.
  
 +## Security Center (new in 2.0), Super+S
 +One switch for **Restricted Mode** plus profiles, an emergency disconnect, audits, sandboxes and labs, with every status *verified* against the real system.
-+`ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Full guide and limits: `docs/SECURITY.md`. Tests: `sudo bash tests/run-all.sh`.
++`ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Full guide and limits: `docs/SECURITY.md`. Installing to disk: `docs/INSTALLER.md`. Tests: `sudo bash tests/run-all.sh`.
 +
  ## Build
  `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
  
 -## Changelog 1.0 (final)
++## Changelog 2.0.2
++- NEW **Graphical installer** (Calamares): start menu > Install NullOS (live session only). Offline, UEFI+BIOS, NullOS-branded. See `docs/INSTALLER.md` (includes what still needs a real-install test).
++- FIX the installed system must not inherit live-only settings: lightdm auto-login of `ns` and the `ns`-only sudo rule are rewritten during install.
++
++## Changelog 2.0.1
++- FIX output no longer wraps into the first column on narrow terminals.
++- FIX the monitor no longer reports the service's own NetworkManager drop-ins as 'changes since baseline'.
++- FIX tool packs: `ns-install`/`ns-pack` wait for the apt/dpkg lock held by background updaters (was: "could not get lock") and update the package index once per session.
++- FIX labs: service no longer uses a private mount namespace (could hide lab namespaces); stale bridge/namespaces from a failed attempt are cleaned instead of failing with "File exists".
++- NEW AppArmor installed (`apparmor`, `apparmor-utils`); userns restriction kept off so ns-sandbox/Firefox keep working.
++
 +## Changelog 2.0
 +- NEW Security Center + `nullos-secd` service, 4 profiles + custom, verification engine, kill switch, drift repair, lab networks, `ns-sandbox`, credential/privilege/service/user/package audits, `ns-pack` search/info/profiles, `ns-offline`, release metadata.
 +- Existing files touched (all small, see docs/CHANGES-existing-files.patch): `ns-start`, `ns-genmenu` (+Security Center; `firefox-esr` -> `ns-browser`), `ns-autostart` (respect clipboard block), i3 config (Super+S), tint2 (live status item), `ns-install` (+prowler, scoutsuite), `packages.txt` (+bubblewrap), `build-iso.sh`, workflow. `/etc/nftables.conf` is unchanged.
@@ -65,7 +76,7 @@ index ca44e89..173820b 100644
  - Shutdown/reboot no longer waits for ENTER ("remove the installation medium"); shorter systemd stop timeouts.
  - No more busy/spinning cursor after launching apps (startup notification disabled in i3, Openbox and the panel).
 diff --git a/build-iso.sh b/build-iso.sh
-index 6514f3a..b97e9b9 100755
+index 6514f3a..e551872 100755
 --- a/build-iso.sh
 +++ b/build-iso.sh
 @@ -70,6 +70,11 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
@@ -91,14 +102,18 @@ index 6514f3a..b97e9b9 100755
  update-initramfs -u -k all
  rm -f /usr/sbin/policy-rc.d /pkgs.txt /fin.sh
  apt-get clean; rm -rf /var/lib/apt/lists/* /var/cache/apt/*.bin /usr/share/doc/* /usr/share/info/* /tmp/* /root/.cache /var/log/apt/* 2>/dev/null || true
-@@ -104,10 +109,17 @@ echo "== 4/6 sanity checks"
+@@ -104,10 +109,21 @@ echo "== 4/6 sanity checks"
  chroot "$R" /bin/bash -c 'lsinitramfs /boot/initrd.img-* | grep -q "scripts/casper"' || { echo "FATAL: casper missing from initramfs"; exit 1; }
  head -c4 "$R/usr/sbin/lightdm" | grep -q ELF || { echo "FATAL: /usr/sbin/lightdm is not a binary"; exit 1; }
  [ -f "$R/etc/X11/default-display-manager" ] && [ ! -L "$R/etc/X11/default-display-manager" ] || { echo "FATAL: default-display-manager"; exit 1; }
 -for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
-+for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber bwrap jq nft; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
++for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber bwrap jq nft apparmor_parser; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
  K=$(ls -1 "$R"/boot/vmlinuz-* | sort -V | tail -1); I=$(ls -1 "$R"/boot/initrd.img-* | sort -V | tail -1)
  cp "$K" "$ISO/casper/vmlinuz"; cp "$I" "$ISO/casper/initrd"; chmod 644 "$ISO/casper/vmlinuz"
++# installer components: a missing piece is reported loudly and recorded in release.json, but does not stop the build
++INSTALLER=1; for b in calamares unsquashfs grub-install efibootmgr parted sgdisk; do chroot "$R" which $b >/dev/null 2>&1 || { echo "WARN: installer component missing: $b"; INSTALLER=0; }; done
++[ -f "$R/etc/calamares/settings.conf" ] || { echo "WARN: /etc/calamares/settings.conf missing"; INSTALLER=0; }
++echo "installer: $([ $INSTALLER = 1 ] && echo ready || echo NOT READY)"
 +[ -x "$R/usr/lib/nullos/nullos-secd" ] && [ -f "$R/etc/systemd/system/nullos-secd.service" ] && [ -f "$R/usr/share/nullos/profiles/restricted-network.json" ] \
 +  || { echo "FATAL: Security Center files missing from the image"; exit 1; }
  cleanup
@@ -110,14 +125,14 @@ index 6514f3a..b97e9b9 100755
  
  echo "== 5/6 compress"
  mksquashfs "$R" "$ISO/casper/filesystem.squashfs" -comp zstd -Xcompression-level 10 -b 256K -noappend -e boot/initrd.img.old boot/vmlinuz.old
-@@ -142,3 +154,26 @@ EOF
+@@ -142,3 +158,26 @@ EOF
  echo "== 6/6 iso"
  grub-mkrescue -o "$OUT/nullos-$ARCH.iso" "$ISO" -- -volid NULLOS
  ls -lh "$OUT/nullos-$ARCH.iso"
 +# release metadata: exact sizes are measured, never assumed (design target ~1.4 GB for the ISO)
 +ISO_BYTES=$(stat -c %s "$OUT/nullos-$ARCH.iso"); SQ_BYTES=$(stat -c %s "$ISO/casper/filesystem.squashfs")
 +( cd "$OUT" && sha256sum "nullos-$ARCH.iso" > "nullos-$ARCH.iso.sha256" )
-+ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
++INSTALLER=${INSTALLER:-0} ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
 +import hashlib, json, os, subprocess, time
 +out, arch = os.environ["OUT"], os.environ["ARCH"]
 +iso = os.path.join(out, "nullos-%s.iso" % arch)
@@ -131,7 +146,7 @@ index 6514f3a..b97e9b9 100755
 +json.dump({"name": "NullOS", "version": "2.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
 +           "iso_bytes": int(os.environ["ISO_BYTES"]), "iso_sha256": h.hexdigest(), "squashfs_bytes": int(os.environ["SQ_BYTES"]),
 +           "installed_bytes_uncompressed": int(os.environ["INSTALLED_BYTES"]), "package_count": pk, "design_target_iso_bytes": target,
-+           "within_design_target": int(os.environ["ISO_BYTES"]) <= target,
++           "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1",
 +           "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "not applicable (live image)",
 +                       "offline_operation": "base system and bundled tools yes; ns-pack, updates and online services need internet"}},
 +          open(os.path.join(out, "nullos-%s.release.json" % arch), "w"), indent=1)
@@ -181,8 +196,20 @@ index 7173f3e..8e592be 100644
 +execp_tooltip = Security Center (click to open)
 +execp_lclick_command = ns-security
 +execp_rclick_command = ns-term ns-secure status
+diff --git a/overlay/etc/sysctl.d/99-nullsec.conf b/overlay/etc/sysctl.d/99-nullsec.conf
+index 63c9dac..8ccaa1c 100644
+--- a/overlay/etc/sysctl.d/99-nullsec.conf
++++ b/overlay/etc/sysctl.d/99-nullsec.conf
+@@ -11,3 +11,7 @@ net.ipv4.tcp_syncookies=1
+ fs.protected_symlinks=1
+ fs.protected_hardlinks=1
+ fs.suid_dumpable=0
++
++# AppArmor is installed. Ubuntu would set this to 1 and block unprivileged user namespaces (bubblewrap/ns-sandbox, Firefox-style sandboxes).
++# Set to 1 if you do not use ns-sandbox / ns-lab and want that extra hardening.
++kernel.apparmor_restrict_unprivileged_userns=0
 diff --git a/overlay/usr/local/bin/ns-autostart b/overlay/usr/local/bin/ns-autostart
-index 3f6e17c..66bfa40 100755
+index 3f6e17c..cce109f 100755
 --- a/overlay/usr/local/bin/ns-autostart
 +++ b/overlay/usr/local/bin/ns-autostart
 @@ -12,7 +12,7 @@ run dunst
@@ -194,8 +221,16 @@ index 3f6e17c..66bfa40 100755
  run xfce4-power-manager
  run pasystray
  ( sleep 5; ns-audio fix >/dev/null 2>&1 ) &
+@@ -20,4 +20,7 @@ if [ ! -f ~/.config/nullsec/nofx ]; then run picom --config ~/.config/picom/pico
+ if [ "$DESKTOP_SESSION" = i3 ] || pgrep -x i3 >/dev/null; then
+   pgrep -fx 'python3 /usr/local/bin/ns-autotile' >/dev/null || ( python3 /usr/local/bin/ns-autotile >/dev/null 2>&1 & )
+ fi
++if grep -qw boot=casper /proc/cmdline 2>/dev/null && command -v ns-installer >/dev/null 2>&1; then
++  ( sleep 10; notify-send 'NullOS live session' 'To install to disk: start menu > Install NullOS' ) >/dev/null 2>&1 &
++fi
+ exit 0
 diff --git a/overlay/usr/local/bin/ns-genmenu b/overlay/usr/local/bin/ns-genmenu
-index 36e6ec7..a5b903f 100755
+index 36e6ec7..99217b3 100755
 --- a/overlay/usr/local/bin/ns-genmenu
 +++ b/overlay/usr/local/bin/ns-genmenu
 @@ -6,7 +6,7 @@ T=/usr/share/nullsec/tools.tsv; OUT=${1:-$HOME/.config/openbox/menu.xml}
@@ -207,19 +242,53 @@ index 36e6ec7..a5b903f 100755
  echo '<item label="run..."><action name="Execute"><command>rofi -show run</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
  echo '<separator/>'
  for c in $(cut -f1 $T | sort -u); do
-@@ -16,6 +16,7 @@ for c in $(cut -f1 $T | sort -u); do
+@@ -16,6 +16,8 @@ for c in $(cut -f1 $T | sort -u); do
  done
  echo '<separator/>'
  echo '<item label="network"><action name="Execute"><command>ns-net</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
 +echo '<item label="security center"><action name="Execute"><command>ns-security</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
++echo '<item label="install nullos"><action name="Execute"><command>ns-installer</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
  echo '<menu id="m-theme" label="theme">'
  for t in red blue green; do echo "<item label=\"$t\"><action name=\"Execute\"><command>ns-theme $t</command><startupnotify><enabled>no</enabled></startupnotify></action></item>"; done
  echo '</menu>'
 diff --git a/overlay/usr/local/bin/ns-install b/overlay/usr/local/bin/ns-install
-index 620984b..b08cf25 100755
+index 620984b..62a7819 100755
 --- a/overlay/usr/local/bin/ns-install
 +++ b/overlay/usr/local/bin/ns-install
-@@ -31,6 +31,8 @@ case "$1" in
+@@ -4,7 +4,22 @@ unset DESKTOP_STARTUP_ID
+ set -e
+ S=""; [ "$(id -u)" -ne 0 ] && S=sudo
+ A=$(dpkg --print-architecture); case $A in amd64) GA=amd64; GB=x86_64;; arm64) GA=arm64; GB=aarch64;; esac
+-apt_i() { $S apt-get update -qq; $S apt-get install -y --no-install-recommends "$@"; }
++# A freshly booted Ubuntu runs background package jobs (apt-daily, unattended-upgrades) that hold the apt/dpkg lock.
++# Wait for them instead of failing with "Could not get lock ... another process is using it".
++apt_wait() {
++  local n=0
++  while pgrep -x 'apt|apt-get|dpkg|aptitude|unattended-upgr|packagekitd|apt.systemd.dai' >/dev/null 2>&1; do
++    [ $n -eq 0 ] && echo "waiting for another package operation (the system updater) to finish..." >&2
++    n=$((n+1)); [ $n -gt 180 ] && { echo "the package system is still busy after 6 minutes; try again in a moment" >&2; return 1; }
++    sleep 2
++  done
++}
++apt_update() { # once per session (or when forced / older than an hour)
++  if [ "${1:-}" = force ] || [ ! -f /tmp/.ns-apt-updated ] || [ -n "$(find /tmp/.ns-apt-updated -mmin +60 2>/dev/null)" ]; then
++    apt_wait || return 1; $S apt-get -o DPkg::Lock::Timeout=300 update -qq && touch /tmp/.ns-apt-updated
++  fi
++}
++apt_i() { apt_update || return 1; apt_wait || return 1; $S apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends "$@"; }
+ ghbin() { # ghbin owner/repo binary
+   apt_i curl jq unzip ca-certificates >/dev/null
+   url=$(curl -fsSL "https://api.github.com/repos/$1/releases/latest" | jq -r --arg a "$GA" --arg b "$GB" \
+@@ -19,6 +34,8 @@ gitapp() { # gitapp url dir launcher-command-line name
+   printf '#!/bin/sh\nexec %s "$@"\n' "$3" | $S tee /usr/local/bin/$4 >/dev/null; $S chmod +x /usr/local/bin/$4; echo "installed $4"
+ }
+ case "$1" in
++  __update) apt_update force;;
++  __purge) apt_wait && $S apt-get -o DPkg::Lock::Timeout=300 purge -y "$2" && $S apt-get -o DPkg::Lock::Timeout=300 autoremove -y;;
+   apt:*) apt_i "${1#apt:}";;
+   subfinder) ghbin projectdiscovery/subfinder subfinder;;
+   httpx) ghbin projectdiscovery/httpx httpx;;
+@@ -31,6 +48,8 @@ case "$1" in
    impacket) apt_i pipx; pipx install impacket;;
    bloodhound) apt_i pipx; pipx install bloodhound;;
    volatility3) apt_i pipx; pipx install volatility3;;
@@ -229,7 +298,7 @@ index 620984b..b08cf25 100755
    seclists) apt_i git ca-certificates; $S git clone --depth 1 https://github.com/danielmiessler/SecLists /usr/share/seclists;;
    firefox) apt_i wget gnupg ca-certificates; $S install -d -m755 /etc/apt/keyrings
 diff --git a/overlay/usr/local/bin/ns-pack b/overlay/usr/local/bin/ns-pack
-index 65f43d4..49f1173 100755
+index 65f43d4..4b07469 100755
 --- a/overlay/usr/local/bin/ns-pack
 +++ b/overlay/usr/local/bin/ns-pack
 @@ -1,9 +1,41 @@
@@ -276,12 +345,12 @@ index 65f43d4..49f1173 100755
 +        if ns-install "$s"; then ok=$((ok+1)); else echo "FAILED  $s"; fail=$((fail+1)); fi
 +      done; echo "profile $n: $ok installed, $fail failed"; [ $fail -eq 0 ]
 +    else ns-install "$n"; fi;;
-+  remove|rm) [ -n "${2:-}" ] || { echo "usage: ns-pack remove PKG"; exit 2; }; sudo apt-get purge -y "$2" && sudo apt-get autoremove -y;;
-+  update) sudo apt-get update;;
++  remove|rm) [ -n "${2:-}" ] || { echo "usage: ns-pack remove PKG"; exit 2; }; ns-install __purge "$2";;
++  update) ns-install __update;;
 +  *) echo "usage: ns-pack list | profiles | search TERM | info NAME | install NAME|PROFILE|apt:PKG | remove PKG | update";;
  esac
 diff --git a/overlay/usr/local/bin/ns-start b/overlay/usr/local/bin/ns-start
-index bed4117..9fbc2ed 100755
+index bed4117..0a93af5 100755
 --- a/overlay/usr/local/bin/ns-start
 +++ b/overlay/usr/local/bin/ns-start
 @@ -2,7 +2,7 @@
@@ -289,24 +358,43 @@ index bed4117..9fbc2ed 100755
  # NullOS start menu (logo button / Super+Space): apps, settings, power. Everything is clickable.
  sub() { rofi -dmenu -i -p "$1"; }
 -c=$(printf '%s\n' "Applications" "Files" "Terminal" "Browser" "Text editor" "Calculator" "PDF viewer" "Images" "Archives" "Task manager" "Screenshot" "Security tools" "Network / Wi-Fi" "Settings >" "Power >" | sub nullos) || exit 0
-+c=$(printf '%s\n' "Applications" "Files" "Terminal" "Browser" "Text editor" "Calculator" "PDF viewer" "Images" "Archives" "Task manager" "Screenshot" "Security tools" "Security Center" "Network / Wi-Fi" "Settings >" "Power >" | sub nullos) || exit 0
++c=$({ printf '%s\n' "Applications" "Files" "Terminal" "Browser" "Text editor" "Calculator" "PDF viewer" "Images" "Archives" "Task manager" "Screenshot" "Security tools" "Security Center" "Network / Wi-Fi" "Settings >" "Power >"; grep -qw boot=casper /proc/cmdline 2>/dev/null && echo "Install NullOS"; } | sub nullos) || exit 0
  case "$c" in
    Applications) exec rofi -show drun;;
    Files) exec thunar;;
-@@ -16,6 +16,7 @@ case "$c" in
+@@ -16,6 +16,8 @@ case "$c" in
    "Task manager") exec xfce4-taskmanager;;
    Screenshot) exec xfce4-screenshooter;;
    "Security tools") exec ns-menu;;
 +  "Security Center") exec ns-security;;
++  "Install NullOS") exec ns-installer;;
    "Network / Wi-Fi") exec ns-net;;
    "Settings >") exec ns-settings;;
    "Power >") exec ns-power;;
 diff --git a/packages.txt b/packages.txt
-index 36baadf..38ab60c 100644
+index 36baadf..6d9e870 100644
 --- a/packages.txt
 +++ b/packages.txt
-@@ -15,3 +15,4 @@ nmap masscan ffuf gobuster whatweb sqlmap hydra john aircrack-ng hcxtools hcxdum
+@@ -15,3 +15,22 @@ nmap masscan ffuf gobuster whatweb sqlmap hydra john aircrack-ng hcxtools hcxdum
  gdb radare2 binwalk foremost libimage-exiftool-perl python3-pwntools python3-impacket
  pipewire-audio libspa-0.2-modules pasystray fonts-dejavu-core fonts-liberation xdg-user-dirs
  dbus-user-session rtkit
 +bubblewrap
++apparmor
++apparmor-utils
++# --- graphical installer (Calamares) and everything it needs to install OFFLINE, incl. the bootloader itself ---
++calamares
++squashfs-tools
++efibootmgr
++parted
++gdisk
++dosfstools
++os-prober
++grub-common
++grub2-common
++grub-pc-bin
++grub-efi-amd64-bin
++grub-efi-amd64-signed
++grub-efi-arm64-bin
++grub-efi-arm64-signed
++shim-signed

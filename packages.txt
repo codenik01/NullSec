@@ -16,3 +16,21 @@ gdb radare2 binwalk foremost libimage-exiftool-perl python3-pwntools python3-imp
 pipewire-audio libspa-0.2-modules pasystray fonts-dejavu-core fonts-liberation xdg-user-dirs
 dbus-user-session rtkit
 bubblewrap
+apparmor
+apparmor-utils
+# --- graphical installer (Calamares) and everything it needs to install OFFLINE, incl. the bootloader itself ---
+calamares
+squashfs-tools
+efibootmgr
+parted
+gdisk
+dosfstools
+os-prober
+grub-common
+grub2-common
+grub-pc-bin
+grub-efi-amd64-bin
+grub-efi-amd64-signed
+grub-efi-arm64-bin
+grub-efi-arm64-signed
+shim-signed

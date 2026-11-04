@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """ns-secure: command-line client for the NullOS Security Center (talks to nullos-secd)."""
-import json, os, socket, subprocess, sys, time
+import json, os, shutil, socket, subprocess, sys, textwrap, time
 
 SOCK = os.environ.get("NULLOS_SOCK", "/run/nullos/secd.sock")
 SUMMARY = os.environ.get("NULLOS_SUMMARY", "/run/nullos/status.json")
@@ -45,6 +45,27 @@ def call(verb, **args):
     return r["result"]
 
 
+def cols():
+    return max(40, shutil.get_terminal_size((100, 24)).columns)
+
+
+def row(title, status, detail, indent=2, tw=34):
+    """One status row. Wide terminal: detail beside the status. Narrow: detail wrapped underneath with a hanging
+    indent, so long text never wraps back into the first column."""
+    w = cols()
+    if w >= 110:
+        lead = indent + tw + 1 + 11 + 1
+        lines = textwrap.wrap(detail, max(30, w - lead - 1)) or [""]
+        out = " " * indent + "%-*s " % (tw, title) + paint(status) + " " + lines[0]
+        for l in lines[1:]:
+            out += "\n" + " " * lead + l
+        return out
+    out = " " * indent + "%-*s " % (min(tw, 28), title) + paint(status)
+    for l in textwrap.wrap(detail, max(30, w - indent - 6)):
+        out += "\n" + " " * (indent + 3) + l
+    return out
+
+
 def show_checks(checks, areas=None):
     names = {"network": "NETWORK", "system": "SYSTEM", "apps": "APPLICATIONS", "credentials": "CREDENTIALS", "host": "HOST INTEGRATION", "labs": "LAB ENVIRONMENTS"}
     for area, title in names.items():
@@ -53,9 +74,10 @@ def show_checks(checks, areas=None):
             continue
         print("\n%s" % title)
         for c in rows:
-            print("  %-34s %s %s" % (c["title"], paint(c["status"]), c["detail"]))
-            for l in c.get("limits", []):
-                print("  %-34s %s  note: %s" % ("", " " * 11, l)) if os.environ.get("NS_VERBOSE") else None
+            print(row(c["title"], c["status"], c["detail"]))
+            if os.environ.get("NS_VERBOSE"):
+                for l in c.get("limits", []):
+                    print(textwrap.fill("note: " + l, cols() - 4, initial_indent="     ", subsequent_indent="           "))
 
 
 def cmd_status(a):
@@ -82,7 +104,8 @@ def cmd_status(a):
 
 def cmd_transition(r):
     for p in r.get("phases", []):
-        print("  %-14s %s  %s" % (p["phase"], "ok  " if p["ok"] else "FAIL", p["detail"]))
+        print(textwrap.fill(p["detail"], cols() - 2, initial_indent="  %-14s %s  " % (p["phase"], "ok  " if p["ok"] else "FAIL"),
+                            subsequent_indent=" " * 24))
     if r.get("checks"):
         show_checks([c for c in r["checks"] if c["area"] in ("network", "host")])
     ov = r.get("overall")
@@ -175,9 +198,9 @@ def main(argv):
             return 0
         if c == "audit":
             for r in call("audit", name=a[0] if a else "all"):
-                print("%s %-34s %s" % (paint(r["status"]), r["title"], r["detail"]))
+                print(textwrap.fill(r["detail"], cols() - 2, initial_indent="%s %-30s " % (paint(r["status"]), r["title"]), subsequent_indent=" " * 14))
                 for l in r.get("limits", []):
-                    print("            note: " + l)
+                    print(textwrap.fill("note: " + l, cols() - 2, initial_indent=" " * 12, subsequent_indent=" " * 18))
                 d = r.get("data")
                 if isinstance(d, list):
                     for x in d[:60]:

@@ -64,6 +64,12 @@ import importlib.machinery as m
 x=m.SourceFileLoader('c','$S').load_module(); print(x.call('lab_net_destroy',id='t1'))
 PY
 ! ip link show nlt1 && [ -z \"\$(ip netns list)\" ]"
+t "lab: stale leftovers from a failed attempt do not block a new lab" "ip link add nlst1 type bridge; ip netns add nlst1-n1; python3 - <<PY
+import importlib.machinery as m
+x=m.SourceFileLoader('c','$S').load_module()
+r=x.call('lab_net_create',id='st1',nodes=2); assert r['check']['status']=='verified', r
+x.call('lab_net_destroy',id='st1')
+PY"
 t "lab id injection rejected"       "python3 - <<PY
 import importlib.machinery as m
 x=m.SourceFileLoader('c','$S').load_module()

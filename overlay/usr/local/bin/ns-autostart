@@ -20,4 +20,7 @@ if [ ! -f ~/.config/nullsec/nofx ]; then run picom --config ~/.config/picom/pico
 if [ "$DESKTOP_SESSION" = i3 ] || pgrep -x i3 >/dev/null; then
   pgrep -fx 'python3 /usr/local/bin/ns-autotile' >/dev/null || ( python3 /usr/local/bin/ns-autotile >/dev/null 2>&1 & )
 fi
+if grep -qw boot=casper /proc/cmdline 2>/dev/null && command -v ns-installer >/dev/null 2>&1; then
+  ( sleep 10; notify-send 'NullOS live session' 'To install to disk: start menu > Install NullOS' ) >/dev/null 2>&1 &
+fi
 exit 0

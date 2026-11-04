@@ -35,7 +35,7 @@ case "${1:-}" in
         if ns-install "$s"; then ok=$((ok+1)); else echo "FAILED  $s"; fail=$((fail+1)); fi
       done; echo "profile $n: $ok installed, $fail failed"; [ $fail -eq 0 ]
     else ns-install "$n"; fi;;
-  remove|rm) [ -n "${2:-}" ] || { echo "usage: ns-pack remove PKG"; exit 2; }; sudo apt-get purge -y "$2" && sudo apt-get autoremove -y;;
-  update) sudo apt-get update;;
+  remove|rm) [ -n "${2:-}" ] || { echo "usage: ns-pack remove PKG"; exit 2; }; ns-install __purge "$2";;
+  update) ns-install __update;;
   *) echo "usage: ns-pack list | profiles | search TERM | info NAME | install NAME|PROFILE|apt:PKG | remove PKG | update";;
 esac

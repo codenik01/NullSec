@@ -25,10 +25,21 @@ Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse),
 
 ## Security Center (new in 2.0), Super+S
 One switch for **Restricted Mode** plus profiles, an emergency disconnect, audits, sandboxes and labs, with every status *verified* against the real system.
-`ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Full guide and limits: `docs/SECURITY.md`. Tests: `sudo bash tests/run-all.sh`.
+`ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Full guide and limits: `docs/SECURITY.md`. Installing to disk: `docs/INSTALLER.md`. Tests: `sudo bash tests/run-all.sh`.
 
 ## Build
 `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
+
+## Changelog 2.0.2
+- NEW **Graphical installer** (Calamares): start menu > Install NullOS (live session only). Offline, UEFI+BIOS, NullOS-branded. See `docs/INSTALLER.md` (includes what still needs a real-install test).
+- FIX the installed system must not inherit live-only settings: lightdm auto-login of `ns` and the `ns`-only sudo rule are rewritten during install.
+
+## Changelog 2.0.1
+- FIX output no longer wraps into the first column on narrow terminals.
+- FIX the monitor no longer reports the service's own NetworkManager drop-ins as 'changes since baseline'.
+- FIX tool packs: `ns-install`/`ns-pack` wait for the apt/dpkg lock held by background updaters (was: "could not get lock") and update the package index once per session.
+- FIX labs: service no longer uses a private mount namespace (could hide lab namespaces); stale bridge/namespaces from a failed attempt are cleaned instead of failing with "File exists".
+- NEW AppArmor installed (`apparmor`, `apparmor-utils`); userns restriction kept off so ns-sandbox/Firefox keep working.
 
 ## Changelog 2.0
 - NEW Security Center + `nullos-secd` service, 4 profiles + custom, verification engine, kill switch, drift repair, lab networks, `ns-sandbox`, credential/privilege/service/user/package audits, `ns-pack` search/info/profiles, `ns-offline`, release metadata.

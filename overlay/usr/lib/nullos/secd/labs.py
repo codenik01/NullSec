@@ -61,6 +61,13 @@ def create(lid, nodes=2):
     if idx is None:
         return False, "no free lab subnet"
     br = "nl" + lid
+    # a previous attempt that died half-way can leave our own (nl-prefixed) bridge/namespaces behind with no record:
+    # remove them so "File exists / resource busy" never blocks a fresh lab
+    if run(["ip", "link", "show", br])[0] == 0:
+        run(["ip", "link", "del", br])
+    for i in range(1, 7):
+        if os.path.exists("/run/netns/%s-n%d" % (br, i)):
+            run(["ip", "netns", "del", "%s-n%d" % (br, i)])
     made_ns, made_br = [], False
     def undo():
         for ns in made_ns:

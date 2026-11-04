@@ -92,10 +92,18 @@ def apparmor():
     comp = sum(1 for l in lines if l.endswith("(complain)"))
     if not lines:
         return check("sys.apparmor", "AppArmor", INACTIVE,
-                     "enabled in the kernel, but no profiles are loaded (the apparmor package is not installed; confinement is provided by ns-sandbox instead)",
+                     "enabled in the kernel, but no profiles are loaded (is apparmor.service running? try: sudo systemctl restart apparmor)",
                      "system", False, False, None, False, lim)
     st = DEGRADED if comp else ACTIVE
-    return check("sys.apparmor", "AppArmor", st, "%d profile(s) enforcing, %d complain-only" % (enf, comp), "system", False, True, None, False, lim)
+    try:
+        with open("/proc/sys/kernel/apparmor_restrict_unprivileged_userns") as f:
+            userns = f.read().strip()
+    except OSError:
+        userns = None
+    lim = lim + ["Unprivileged user namespaces are %s (needed by ns-sandbox and browser sandboxes; set kernel.apparmor_restrict_unprivileged_userns=1 in /etc/sysctl.d/99-nullsec.conf to restrict them)."
+                 % ("allowed" if userns == "0" else "restricted" if userns == "1" else "not controlled by AppArmor")]
+    return check("sys.apparmor", "AppArmor", st, "%d profile(s) enforcing, %d complain-only; 'ns-sandbox' adds confinement for tools that have no profile" % (enf, comp),
+                 "system", False, True, None, False, lim)
 
 
 # ---- services ------------------------------------------------------------------------------

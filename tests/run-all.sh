@@ -25,5 +25,8 @@ step "real-kernel firewall tests"; $NS bash -c 'mount -t tmpfs none /run; python
 step "failure policy + drift repair (real kernel)"; rm -rf /tmp/fp-root; $NS bash -c 'mount -t tmpfs none /run; python3 -B tests/failure_policy_test.py' | grep -E "FAIL|RESULT"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "end-to-end (daemon + client + kernel)"; $NS bash -c 'mount -t tmpfs none /run; tests/e2e.sh' | grep -E "^FAIL|E2E:" ; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "build-script fragments (end-of-build shell under set -euo pipefail)"; bash tests/build_fragments.sh | grep -E "FAIL|BUILDFRAG"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
+step "apt lock wait (tool packs)"; bash tests/apt_wait.sh | grep -E "FAIL|APTWAIT"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
+step "installer configuration (schemas, ordering, shell steps)"; python3 -B tests/installer_test.py | grep -E "FAIL|SKIPPED|RESULT"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
+step "installer: real Calamares starts on the config (headless)"; bash tests/calamares_smoke.sh | grep -E "FAIL|SKIP|CALSMOKE"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 step "sandbox + lab + pack tests"; bash tests/sandbox.sh | grep -E "FAIL|SKIP|SANDBOX"; [ "${PIPESTATUS[0]}" = 0 ] || fail=1
 echo; [ $fail -eq 0 ] && echo "ALL TEST GROUPS PASSED" || echo "SOME TESTS FAILED"; exit $fail

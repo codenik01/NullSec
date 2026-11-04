@@ -113,6 +113,19 @@ class Service:
             pass
         return d
 
+    def sync_managed_baseline(self):
+        """Files this service writes itself (NetworkManager drop-ins) are part of the policy, not a 'change'."""
+        files = self.state.get("baseline", {}).get("files")
+        if not files:
+            return
+        snap = sysmon.config_snapshot()
+        for p in (net.NM_MAC_CONF, net.NM_DNS_CONF):
+            key = p[len(core.ROOT):]
+            if key in snap:
+                files[key] = snap[key]
+            else:
+                files.pop(key, None)
+
     # ---- verification ----------------------------------------------------------------
     def verify_profile(self, profile):
         checks = []
@@ -247,6 +260,7 @@ class Service:
                            "detail": "; ".join("%s: %s" % (n[0], n[2]) for n in notes) or "network policy applied"})
             self.state.update(mode="restricted", profile=pid, profile_version=prof["version"], requested_at=int(time.time()),
                               applied_at=int(time.time()), changes=changes, expected={"script": script}, fallback_deny=False)
+            self.sync_managed_baseline()
             self._save()
             # 3. verify
             time.sleep(0.3)
@@ -290,6 +304,7 @@ class Service:
                            "detail": "removed Restricted Mode controls; Standard policy restored (baseline firewall untouched)"})
             self.state.update(mode="standard", profile="standard", profile_version=None, applied_at=int(time.time()),
                               requested_at=int(time.time()), changes=[], expected={})
+            self.sync_managed_baseline()
             self._save()
             checks = self.collect()
             fw = next(c for c in checks if c["id"] == "sys.firewall")

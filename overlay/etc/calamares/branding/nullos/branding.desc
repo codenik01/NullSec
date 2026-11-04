@@ -1,0 +1,36 @@
+---
+componentName:  nullos
+welcomeStyleCalamares:   true
+welcomeExpandingLogo:   true
+windowExpanding:    normal
+windowSize: 900px,560px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+
+strings:
+    productName:         NullOS
+    shortProductName:    NullOS
+    version:             "2.0"
+    shortVersion:        "2.0"
+    versionedName:       NullOS 2.0
+    shortVersionedName:  NullOS 2.0
+    bootloaderEntryName: NullOS
+    productUrl:          https://github.com/codenik01/NullSec
+    supportUrl:          https://github.com/codenik01/NullSec/issues
+    knownIssuesUrl:      https://github.com/codenik01/NullSec/issues
+    releaseNotesUrl:     https://github.com/codenik01/NullSec
+
+images:
+    productIcon:         "logo.png"
+    productLogo:         "logo.png"
+    productWelcome:      "welcome.png"
+
+style:
+   SidebarBackground:        "#0b0b0d"
+   SidebarText:              "#c8c8c8"
+   SidebarTextCurrent:       "#0b0b0d"
+   SidebarBackgroundCurrent: "#e5484d"
+
+slideshow:               "show.qml"
+slideshowAPI: 2

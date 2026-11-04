@@ -109,9 +109,13 @@ echo "== 4/6 sanity checks"
 chroot "$R" /bin/bash -c 'lsinitramfs /boot/initrd.img-* | grep -q "scripts/casper"' || { echo "FATAL: casper missing from initramfs"; exit 1; }
 head -c4 "$R/usr/sbin/lightdm" | grep -q ELF || { echo "FATAL: /usr/sbin/lightdm is not a binary"; exit 1; }
 [ -f "$R/etc/X11/default-display-manager" ] && [ ! -L "$R/etc/X11/default-display-manager" ] || { echo "FATAL: default-display-manager"; exit 1; }
-for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber bwrap jq nft; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
+for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber bwrap jq nft apparmor_parser; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
 K=$(ls -1 "$R"/boot/vmlinuz-* | sort -V | tail -1); I=$(ls -1 "$R"/boot/initrd.img-* | sort -V | tail -1)
 cp "$K" "$ISO/casper/vmlinuz"; cp "$I" "$ISO/casper/initrd"; chmod 644 "$ISO/casper/vmlinuz"
+# installer components: a missing piece is reported loudly and recorded in release.json, but does not stop the build
+INSTALLER=1; for b in calamares unsquashfs grub-install efibootmgr parted sgdisk; do chroot "$R" which $b >/dev/null 2>&1 || { echo "WARN: installer component missing: $b"; INSTALLER=0; }; done
+[ -f "$R/etc/calamares/settings.conf" ] || { echo "WARN: /etc/calamares/settings.conf missing"; INSTALLER=0; }
+echo "installer: $([ $INSTALLER = 1 ] && echo ready || echo NOT READY)"
 [ -x "$R/usr/lib/nullos/nullos-secd" ] && [ -f "$R/etc/systemd/system/nullos-secd.service" ] && [ -f "$R/usr/share/nullos/profiles/restricted-network.json" ] \
   || { echo "FATAL: Security Center files missing from the image"; exit 1; }
 cleanup
@@ -157,7 +161,7 @@ ls -lh "$OUT/nullos-$ARCH.iso"
 # release metadata: exact sizes are measured, never assumed (design target ~1.4 GB for the ISO)
 ISO_BYTES=$(stat -c %s "$OUT/nullos-$ARCH.iso"); SQ_BYTES=$(stat -c %s "$ISO/casper/filesystem.squashfs")
 ( cd "$OUT" && sha256sum "nullos-$ARCH.iso" > "nullos-$ARCH.iso.sha256" )
-ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
+INSTALLER=${INSTALLER:-0} ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
 import hashlib, json, os, subprocess, time
 out, arch = os.environ["OUT"], os.environ["ARCH"]
 iso = os.path.join(out, "nullos-%s.iso" % arch)
@@ -171,7 +175,7 @@ target = 1_400_000_000
 json.dump({"name": "NullOS", "version": "2.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
            "iso_bytes": int(os.environ["ISO_BYTES"]), "iso_sha256": h.hexdigest(), "squashfs_bytes": int(os.environ["SQ_BYTES"]),
            "installed_bytes_uncompressed": int(os.environ["INSTALLED_BYTES"]), "package_count": pk, "design_target_iso_bytes": target,
-           "within_design_target": int(os.environ["ISO_BYTES"]) <= target,
+           "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1",
            "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "not applicable (live image)",
                        "offline_operation": "base system and bundled tools yes; ns-pack, updates and online services need internet"}},
           open(os.path.join(out, "nullos-%s.release.json" % arch), "w"), indent=1)

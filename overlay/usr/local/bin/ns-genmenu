@@ -17,6 +17,7 @@ done
 echo '<separator/>'
 echo '<item label="network"><action name="Execute"><command>ns-net</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
 echo '<item label="security center"><action name="Execute"><command>ns-security</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="install nullos"><action name="Execute"><command>ns-installer</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
 echo '<menu id="m-theme" label="theme">'
 for t in red blue green; do echo "<item label=\"$t\"><action name=\"Execute\"><command>ns-theme $t</command><startupnotify><enabled>no</enabled></startupnotify></action></item>"; done
 echo '</menu>'

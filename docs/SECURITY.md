@@ -71,7 +71,7 @@ Add your own: drop a JSON file (same schema) in `/etc/nullos/profiles.d/`. Inval
 | Critical-config monitor | sha256 of security-relevant files vs. an accepted baseline | a change is "changed", never "malicious"; accept with `ns-secure baseline accept` |
 | USB storage policy | udev rule: desktop (udisks) ignores USB mass storage | root can still mount by hand; not a port lock |
 | Clipboard / drag-drop | stops guest agents (spice-vdagent, vmware-user, VBoxClient) and keeps them off | stops guest-side auto-resize too; host-side sharing must be disabled in the hypervisor, and is reported ACTIVE (never VERIFIED) |
-| AppArmor | honest status only (the `apparmor` package is intentionally **not** in the image: it enables userns restrictions that can break Firefox/Electron) | reports "no profiles loaded" until you install it |
+| AppArmor | the Ubuntu `apparmor` package is installed and its profiles load at boot; status shows how many enforce. Ubuntu's own sysctl would set `kernel.apparmor_restrict_unprivileged_userns=1`, which blocks bubblewrap (`ns-sandbox`, `ns-lab`) and browser-style sandboxes, so NullOS sets it to 0 in `99-nullsec.conf` (set it to 1 if you do not use them) | AppArmor only confines programs that have a profile (system ones such as `man`, `lsb_release`, `unix-chkpwd`; Firefox is covered by an *unconfined* userns profile). `ns-sandbox` covers tools without a profile. |
 
 ## Confinement and labs
 * `ns-sandbox [--net] [--ro P] [--rw P] -- cmd`: bubblewrap sandbox. Read-only system, **empty private home**, private /tmp,
@@ -87,6 +87,7 @@ Add your own: drop a JSON file (same schema) in `/etc/nullos/profiles.d/`. Inval
 Ubuntu-compatible sources only (no Kali/Parrot repositories; the package audit flags them if added).
 
 ## Service, authorisation, files
+* Terminal output wraps to the window width (long details drop under the title on narrow terminals).
 * `nullos-secd` (Python 3, stdlib only) runs as root; Unix socket `/run/nullos/secd.sock`, mode 0660 group `sudo`,
   caller identified with `SO_PEERCRED`. Fixed verbs only. **There is no verb that runs a command**; arguments are schema-validated;
   profile ids, lab ids and interface names are matched against strict patterns.
