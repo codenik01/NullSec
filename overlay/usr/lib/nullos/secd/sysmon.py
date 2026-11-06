@@ -75,16 +75,21 @@ def kernel_hardening():
 
 
 # ---- AppArmor ------------------------------------------------------------------------------
+AA_ENABLED = "/sys/module/apparmor/parameters/enabled"
+AA_PROFILES = "/sys/kernel/security/apparmor/profiles"
+AA_USERNS = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns"
+
+
 def apparmor():
     lim = ["Enforcing profiles exist only for the applications that have one; this does not prove a given application is confined."]
-    en = ("/sys/module/apparmor/parameters/enabled")
+    en = AA_ENABLED
     if not os.path.exists(en):
         return check("sys.apparmor", "AppArmor", UNSUPPORTED, "this kernel has no AppArmor", "system", False, False, None, False, lim)
     with open(en) as f:
         if f.read().strip() != "Y":
             return check("sys.apparmor", "AppArmor", INACTIVE, "AppArmor is disabled in the kernel", "system", False, False, None, False, lim)
     try:
-        with open(("/sys/kernel/security/apparmor/profiles")) as f:
+        with open(AA_PROFILES) as f:
             lines = [l for l in f.read().splitlines() if l.strip()]
     except OSError:
         return check("sys.apparmor", "AppArmor", UNKNOWN, "enabled, but the loaded-profile list is not readable", "system", False, None, None, False, lim)
@@ -94,15 +99,16 @@ def apparmor():
         return check("sys.apparmor", "AppArmor", INACTIVE,
                      "enabled in the kernel, but no profiles are loaded (is apparmor.service running? try: sudo systemctl restart apparmor)",
                      "system", False, False, None, False, lim)
-    st = DEGRADED if comp else ACTIVE
+    # Ubuntu ships a few profiles in complain mode on purpose; that is normal. Only "nothing is enforcing" is a problem.
+    st = ACTIVE if enf else DEGRADED
     try:
-        with open("/proc/sys/kernel/apparmor_restrict_unprivileged_userns") as f:
+        with open(AA_USERNS) as f:
             userns = f.read().strip()
     except OSError:
         userns = None
     lim = lim + ["Unprivileged user namespaces are %s (needed by ns-sandbox and browser sandboxes; set kernel.apparmor_restrict_unprivileged_userns=1 in /etc/sysctl.d/99-nullsec.conf to restrict them)."
                  % ("allowed" if userns == "0" else "restricted" if userns == "1" else "not controlled by AppArmor")]
-    return check("sys.apparmor", "AppArmor", st, "%d profile(s) enforcing, %d complain-only; 'ns-sandbox' adds confinement for tools that have no profile" % (enf, comp),
+    return check("sys.apparmor", "AppArmor", st, "%d profile(s) enforcing, %d in complain mode (Ubuntu ships those that way; they log but do not block). 'ns-sandbox' confines tools that have no profile" % (enf, comp) if enf else "profiles are loaded but none is enforcing (%d complain-only)" % comp,
                  "system", False, True, None, False, lim)
 
 

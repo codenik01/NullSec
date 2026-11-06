@@ -11,10 +11,10 @@ navigation: widget
 strings:
     productName:         NullOS
     shortProductName:    NullOS
-    version:             "2.0"
-    shortVersion:        "2.0"
-    versionedName:       NullOS 2.0
-    shortVersionedName:  NullOS 2.0
+    version:             "1.0"
+    shortVersion:        "1.0"
+    versionedName:       NullOS 1.0
+    shortVersionedName:  NullOS 1.0
     bootloaderEntryName: NullOS
     productUrl:          https://github.com/codenik01/NullSec
     supportUrl:          https://github.com/codenik01/NullSec/issues

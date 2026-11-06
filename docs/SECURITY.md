@@ -1,4 +1,4 @@
-# NullOS Security Center (NullOS 2.0)
+# NullOS Security Center (NullOS 1.0)
 
 One switch (**Restricted Mode**) that asks a small privileged service to apply a documented, versioned profile,
 then **inspects the system to see whether it really worked**. It never reports a protection because a button was

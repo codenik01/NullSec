@@ -16,7 +16,7 @@ import tempfile
 import threading
 import time
 
-VERSION = "2.0.0"
+VERSION = "1.0.0"
 
 # NULLOS_ROOT relocates every path (used by the test-suite; empty on a real system).
 ROOT = os.environ.get("NULLOS_ROOT", "")

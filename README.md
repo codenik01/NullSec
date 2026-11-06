@@ -1,56 +1,43 @@
-# NullOS 2.0 (build kit v5)
-Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with Hyprland-style gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away.
+# NullOS 1.0
+Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away. Four themes, a verified Security Center, and a graphical installer.
 
-## Login
-User `ns`, no password, passwordless sudo.
+## Try it, then install it
+Boot the ISO: **NullOS (Live Mode)** to try it, or **Install NullOS** to go straight to the installer. In the live session the user is `ns` (no password, passwordless sudo). To install to disk: start menu > **Install NullOS**. Installation is fully offline (UEFI and BIOS); you create your own account and the installed system boots to a themed GRUB menu and login screen. Details, and what to test: `docs/INSTALLER.md`.
 
 ## Panel (top)
-[NullOS logo] = start menu (apps, settings, power) | [term] | [net] | [tools] | workspaces + windows | tray | clock. Right-click the logo = power menu.
+[NullOS logo] = start menu (apps, settings, power) | [term] | [net] | [tools] | [sec] live security status | workspaces + windows | tray | clock. Right-click the logo = power menu.
 
 ## Keys (Super; Alt works for the core ones)
-Super+Enter terminal | Super+Space start menu | Super+D apps | Super+T security tools | Super+N network | Super+B browser | Super+E files
+Super+Enter terminal | Super+Space start menu | Super+D apps | Super+T security tools | **Super+S Security Center** | Super+N network | Super+B browser | Super+E files
 Super+Q close | Super+V float | Super+F fullscreen | Super+W tabbed/split | Super+arrows (or h/j/k/l) focus | +Shift move | Super+R resize mode
 Super+1..9 workspace, +Shift move window | Super+Tab next workspace | Super+- scratchpad | F12 dropdown terminal | Super+Shift+S screenshot | Super+Shift+T theme | Super+Shift+E power
 Mouse: Super+left-drag moves floating windows, Super+right-drag resizes.
 
-## Terminal
-Right-click = Copy / Paste / Paste Selection / Open Tab / Preferences. Selecting text copies it.
-Commands: ifconfig, ip, ping, neofetch, fastfetch (`ff`), nano, ssh, htop, tree, unzip, dig, whois, lspci, lsusb, man ...
-
-## Apps
-Files (Thunar), Settings (xfce4-settings: appearance, display, keyboard, mouse), Wi-Fi/network (ns-net + tray applet), Audio (pavucontrol), Archives (engrampa), Text editor (mousepad), Screenshot, Power manager, Task manager, Images (ristretto), Calculator (mate-calc), PDF (atril), Firefox.
-
 ## Look
-`ns-theme red|blue|green|<hex>` recolours panel, borders, menus, terminal, GTK apps, prompt, fastfetch/neofetch logo. `ns-wallpaper` picks the wallpaper (default = NullOS Cyber Fortress). `ns-mode tiling|floating` switches layout. `ns-fx off` disables fade effects. `ns-dpi 144` for Retina text.
+* **Themes**: `ns-theme red|blue|green|mono` (or Settings > Theme). **red is the default**; mono = black & white. It recolours panel, borders, menus, terminal, GTK apps, prompt, logo **and the wallpaper**. Switching is lossless.
+* **Wallpapers**: `ns-wallpaper` (Settings > Wallpaper). Only NullOS artwork is shipped (red, blue, green, black & white); you can pick your own pictures from ~/Pictures, ~/Downloads, ~/Desktop.
+* **Transparency**: Settings > Transparency, or `ns-transparency preset opaque|subtle|glass|max`, `ns-transparency set windows|terminal|panel|menus|notifications 30-100`. Windows, terminal, top bar, launcher menus and notifications are controlled separately; your choices persist across theme changes.
+* Layout `ns-mode tiling|floating`, effects `ns-fx off`, HiDPI text `ns-dpi 144`.
+* Boot menu and login screen use the NullOS theme (artwork generator: `python3 tools/make-assets.py`).
 
-## Security Center (new in 2.0), Super+S
-One switch for **Restricted Mode** plus profiles, an emergency disconnect, audits, sandboxes and labs, with every status *verified* against the real system.
-`ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Full guide and limits: `docs/SECURITY.md`. Installing to disk: `docs/INSTALLER.md`. Tests: `sudo bash tests/run-all.sh`.
+## Security Center, Super+S
+Restricted Mode with profiles, an emergency disconnect, audits, sandboxes and labs, where every status is *verified* against the real system. `ns-secure status|enable|disable|kill|release|audit|logs ...`, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`. Guide and limits: `docs/SECURITY.md`.
 
-## Build
-`sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso.
+## Terminal and apps
+Right-click = Copy / Paste / Paste Selection / Open Tab / Preferences. Files (Thunar), Settings, Wi-Fi (ns-net + tray applet), Audio (pavucontrol), Archives, Text editor (mousepad), Screenshot, Task manager, Images, Calculator, PDF, Firefox. Tool packs: `ns-pack install network|web|forensics|re|cloud`.
 
-## Changelog 2.0.3
-- FIX build: a comment in `packages.txt` was parsed as package names (broke the arm64/amd64 build). The build now ignores `#` comments, the comment is gone, and `tests/packages_test.sh` guards it.
+## Build and test
+`sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso. Each build writes `nullos-<arch>.release.json` (exact size, checksum, installer flag). `sudo bash tests/run-all.sh` runs every test group.
 
-## Changelog 2.0.2
-- NEW **Graphical installer** (Calamares): start menu > Install NullOS (live session only). Offline, UEFI+BIOS, NullOS-branded. See `docs/INSTALLER.md` (includes what still needs a real-install test).
-- FIX the installed system must not inherit live-only settings: lightdm auto-login of `ns` and the `ns`-only sudo rule are rewritten during install.
+## Known limits
+See `docs/SECURITY.md` and `docs/INSTALLER.md` ("Not verified"). In short: the installer's disk writing and the first boot of an installed system need a real-VM check on each release; IPv6 and NetworkManager-specific controls report *unsupported/unknown* rather than guess; `ns-autotile` (auto-dwindle) has a pre-existing Python syntax error and does not run: replace its line 2 with `import os; os.environ.pop("DESKTOP_STARTUP_ID", None)` to enable it.
 
-## Changelog 2.0.1
-- FIX output no longer wraps into the first column on narrow terminals.
-- FIX the monitor no longer reports the service's own NetworkManager drop-ins as 'changes since baseline'.
-- FIX tool packs: `ns-install`/`ns-pack` wait for the apt/dpkg lock held by background updaters (was: "could not get lock") and update the package index once per session.
-- FIX labs: service no longer uses a private mount namespace (could hide lab namespaces); stale bridge/namespaces from a failed attempt are cleaned instead of failing with "File exists".
-- NEW AppArmor installed (`apparmor`, `apparmor-utils`); userns restriction kept off so ns-sandbox/Firefox keep working.
-
-## Changelog 2.0
-- NEW Security Center + `nullos-secd` service, 4 profiles + custom, verification engine, kill switch, drift repair, lab networks, `ns-sandbox`, credential/privilege/service/user/package audits, `ns-pack` search/info/profiles, `ns-offline`, release metadata.
-- Existing files touched (all small, see docs/CHANGES-existing-files.patch): `ns-start`, `ns-genmenu` (+Security Center; `firefox-esr` -> `ns-browser`), `ns-autostart` (respect clipboard block), i3 config (Super+S), tint2 (live status item), `ns-install` (+prowler, scoutsuite), `packages.txt` (+bubblewrap), `build-iso.sh`, workflow. `/etc/nftables.conf` is unchanged.
-
-## Changelog 1.0
-- Sound fixed: dbus-user-session + rtkit added (the audio manager could not start without a user session bus). Live user is in the audio/video groups, card is unmuted at login (`ns-audio fix|test|status`).
-- Shutdown/reboot no longer waits for ENTER ("remove the installation medium"); shorter systemd stop timeouts.
-- No more busy/spinning cursor after launching apps (startup notification disabled in i3, Openbox and the panel).
-- Screen never blanks, Firefox/Thunar are the defaults, tray volume icon, OS reports itself as NullOS 1.0.
-- UTM: add a Sound device (Intel HDA) under Devices if sound is still silent. Run `ns-diag` and share ~/nullsec-diag.txt if anything misbehaves.
+## Release 1.0 (production)
+Everything below is new relative to the original live image:
+- **Security Center** and the `nullos-secd` service: verified Restricted Mode, 4 profiles + custom, kill switch, drift repair, audits, `ns-sandbox`, `ns-lab`, `ns-pack`, `ns-offline`, AppArmor.
+- **Graphical installer** (Calamares): offline, UEFI + BIOS, NullOS-branded; the installed system gets a clean state (no live auto-login, correct sudo rule).
+- **NullOS boot menu** (live and installed) with "NullOS (Live Mode)" and "Install NullOS" entries.
+- **Themes**: red (default), blue, green, black & white, each with its own wallpaper; **new login screen**; **Transparency** settings.
+- Fixes found in real use: output wrapping, the monitor flagging its own files, apt-lock waits for tool packs, lab leftovers, AppArmor complain-mode profiles no longer shown as a fault.
+- Earlier fixes still in place: sound (dbus-user-session + rtkit), shutdown without waiting for ENTER, no busy cursor, screen never blanks. Run `ns-diag` and share ~/nullsec-diag.txt if anything misbehaves.
+- Touched existing files are listed in `docs/CHANGES-existing-files.patch`. `/etc/nftables.conf` is unchanged.

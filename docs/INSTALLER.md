@@ -31,6 +31,15 @@ Your new account starts from `/etc/skel`, exactly like the live user did.
 
 Each step is written so it cannot fail the installation over a cosmetic detail.
 
+## Boot menu and firmware messages
+Both the live ISO and the installed system show the NullOS GRUB menu (logo, red-bordered menu, countdown). The live menu has
+**NullOS (Live Mode)**, **Install NullOS** (boots the live system and starts the installer), safe graphics and RAM mode.
+
+After installing and removing the ISO, a VM's firmware may print `BdsDxe: failed to load Boot0001 "UEFI ... USB HARDDRIVE" ... Not Found`
+before the boot menu. That is only the firmware reporting that the *removed ISO* (a stale boot entry) is gone, and then it
+continues with the next entry: `Boot0005 "NullOS" ... \EFI\NullOS\shimaa64.efi` (shimx64 on amd64), which is the installed system.
+It is harmless. If it bothers you: `sudo efibootmgr` to list entries and `sudo efibootmgr -b 0001 -B` to delete the stale one.
+
 ## Size
 Calamares and its Qt/KDE libraries add roughly **100 MB installed** (about 35-50 MB on the compressed ISO); the signed
 bootloader packages add a little more. The build measures it: `nullos-<arch>.release.json` has the exact ISO size and

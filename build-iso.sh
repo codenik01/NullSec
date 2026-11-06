@@ -70,6 +70,9 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
 # NOTE: a regular file, never a symlink to the binary (that overwrote lightdm once)
 rm -f /etc/X11/default-display-manager; echo /usr/sbin/lightdm > /etc/X11/default-display-manager
 systemctl enable lightdm NetworkManager nftables nullos-groups >/dev/null 2>&1 || true
+# wallpapers: only NullOS artwork is shipped (the picker lists /usr/share/backgrounds/nullos and the user's own folders)
+find /usr/share/backgrounds -mindepth 1 -maxdepth 1 ! -name nullos -exec rm -rf {} + 2>/dev/null || true
+rm -rf /usr/share/gnome-background-properties /usr/share/xfce4/backdrops /usr/share/wallpapers 2>/dev/null || true
 # NullOS Security Center: enable the service and refuse to build an image where it cannot work
 chmod +x /usr/lib/nullos/nullos-secd
 python3 -m compileall -q /usr/lib/nullos || { echo "FATAL: nullos-secd does not compile"; exit 1; }
@@ -95,8 +98,8 @@ for p in casper lightdm lightdm-gtk-greeter i3-wm openbox dbus-user-session; do
   dpkg -s $p 2>/dev/null | grep -q 'Status: install ok installed' || { echo "FATAL: $p is not installed"; exit 1; }
 done
 chmod -x /etc/update-motd.d/* 2>/dev/null || true
-sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="NullOS 2.0"/; s/^VERSION=.*/VERSION="2.0"/' /etc/os-release
-echo "NullOS 2.0" > /etc/nullos-release
+sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="NullOS 1.0"/; s/^VERSION=.*/VERSION="1.0"/' /etc/os-release
+echo "NullOS 1.0" > /etc/nullos-release
 update-initramfs -u -k all
 rm -f /usr/sbin/policy-rc.d /pkgs.txt /fin.sh
 apt-get clean; rm -rf /var/lib/apt/lists/* /var/cache/apt/*.bin /usr/share/doc/* /usr/share/info/* /tmp/* /root/.cache /var/log/apt/* 2>/dev/null || true
@@ -116,6 +119,11 @@ cp "$K" "$ISO/casper/vmlinuz"; cp "$I" "$ISO/casper/initrd"; chmod 644 "$ISO/cas
 INSTALLER=1; for b in calamares unsquashfs grub-install efibootmgr parted sgdisk; do chroot "$R" which $b >/dev/null 2>&1 || { echo "WARN: installer component missing: $b"; INSTALLER=0; }; done
 [ -f "$R/etc/calamares/settings.conf" ] || { echo "WARN: /etc/calamares/settings.conf missing"; INSTALLER=0; }
 echo "installer: $([ $INSTALLER = 1 ] && echo ready || echo NOT READY)"
+# look & boot assets: a missing wallpaper/login theme/GRUB theme should fail the build, not your first boot
+for a in usr/share/backgrounds/nullos/red.jpg usr/share/backgrounds/nullos/blue.jpg usr/share/backgrounds/nullos/green.jpg usr/share/backgrounds/nullos/mono.jpg \
+         usr/share/themes/NullOS-Login/gtk-3.0/gtk.css usr/share/nullos/grub-theme/theme.txt usr/share/nullos/grub-theme/jbmono-16.pf2 usr/local/bin/ns-transparency; do
+  [ -e "$R/$a" ] || { echo "FATAL: missing $a"; exit 1; }
+done
 [ -x "$R/usr/lib/nullos/nullos-secd" ] && [ -f "$R/etc/systemd/system/nullos-secd.service" ] && [ -f "$R/usr/share/nullos/profiles/restricted-network.json" ] \
   || { echo "FATAL: Security Center files missing from the image"; exit 1; }
 cleanup
@@ -129,20 +137,31 @@ echo "== 5/6 compress"
 mksquashfs "$R" "$ISO/casper/filesystem.squashfs" -comp zstd -Xcompression-level 10 -b 256K -noappend -e boot/initrd.img.old boot/vmlinuz.old
 echo "NullOS live" > "$ISO/.disk/info"
 cp "$HERE/grub-bg.jpg" "$ISO/boot/grub/bg.jpg" 2>/dev/null || true
+mkdir -p "$ISO/boot/grub/themes"; cp -r "$HERE/overlay/usr/share/nullos/grub-theme" "$ISO/boot/grub/themes/nullos"
 cat > "$ISO/boot/grub/grub.cfg" <<'EOF'
 set default=0
 set timeout=5
 insmod all_video
 insmod gfxterm
 insmod jpeg
+insmod png
 set gfxmode=auto
+loadfont /boot/grub/themes/nullos/jbmono-14.pf2
+loadfont /boot/grub/themes/nullos/jbmono-16.pf2
 terminal_output gfxterm
+insmod gfxmenu
+# if the theme cannot load, GRUB falls back to the plain colours below and the menu still works
 background_image /boot/grub/bg.jpg
 set menu_color_normal=light-gray/black
 set menu_color_highlight=black/light-red
+set theme=/boot/grub/themes/nullos/theme.txt
 
-menuentry "NullOS live" {
+menuentry "NullOS (Live Mode)" {
     linux /casper/vmlinuz boot=casper quiet loglevel=3 plymouth.enable=0 noprompt ---
+    initrd /casper/initrd
+}
+menuentry "Install NullOS" {
+    linux /casper/vmlinuz boot=casper quiet loglevel=3 plymouth.enable=0 noprompt nullos.install ---
     initrd /casper/initrd
 }
 menuentry "NullOS live (safe graphics)" {
@@ -172,11 +191,11 @@ try: commit = subprocess.check_output(["git", "-C", os.environ["HERE"], "rev-par
 except Exception: commit = None
 pk = open(os.path.join(out, "nullos-%s.packages.txt" % arch)).read().count("\n")
 target = 1_400_000_000
-json.dump({"name": "NullOS", "version": "2.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
+json.dump({"name": "NullOS", "version": "1.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
            "iso_bytes": int(os.environ["ISO_BYTES"]), "iso_sha256": h.hexdigest(), "squashfs_bytes": int(os.environ["SQ_BYTES"]),
            "installed_bytes_uncompressed": int(os.environ["INSTALLED_BYTES"]), "package_count": pk, "design_target_iso_bytes": target,
            "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1",
-           "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "not applicable (live image)",
+           "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "supported: the graphical installer copies the system from the ISO; no downloads",
                        "offline_operation": "base system and bundled tools yes; ns-pack, updates and online services need internet"}},
           open(os.path.join(out, "nullos-%s.release.json" % arch), "w"), indent=1)
 print("release metadata written: nullos-%s.release.json" % arch)

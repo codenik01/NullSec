@@ -189,6 +189,28 @@ class ManagedFiles(unittest.TestCase):
         self.assertNotIn(net.NM_MAC_CONF[len(core.ROOT):], svc.state["baseline"]["files"])
 
 
+class AppArmorStatus(unittest.TestCase):
+    """Regression for the screenshot: '17 enforcing, 4 complain-only' was shown as DEGRADED."""
+    def run_aa(self, enabled, profiles):
+        d = tempfile.mkdtemp(dir=TMP); e = d + "/enabled"; p = d + "/profiles"
+        if enabled is not None: open(e, "w").write(enabled)
+        if profiles is not None: open(p, "w").write(profiles)
+        old = (sysmon.AA_ENABLED, sysmon.AA_PROFILES); sysmon.AA_ENABLED, sysmon.AA_PROFILES = e, p
+        try: return sysmon.apparmor()
+        finally: sysmon.AA_ENABLED, sysmon.AA_PROFILES = old
+    def test_ubuntu_default_is_active_not_degraded(self):
+        prof = "".join("profile%d (enforce)\n" % i for i in range(17)) + "".join("snap%d (complain)\n" % i for i in range(4))
+        r = self.run_aa("Y\n", prof)
+        self.assertEqual(r["status"], "active"); self.assertIn("17 profile(s) enforcing", r["detail"]); self.assertIn("4 in complain mode", r["detail"])
+    def test_nothing_enforcing_is_degraded(self): self.assertEqual(self.run_aa("Y\n", "a (complain)\nb (complain)\n")["status"], "degraded")
+    def test_no_profiles_is_inactive(self): self.assertEqual(self.run_aa("Y\n", "")["status"], "inactive")
+    def test_disabled(self): self.assertEqual(self.run_aa("N\n", "")["status"], "inactive")
+    def test_not_in_kernel(self):
+        old = sysmon.AA_ENABLED; sysmon.AA_ENABLED = TMP + "/nonexistent"
+        try: self.assertEqual(sysmon.apparmor()["status"], "unsupported")
+        finally: sysmon.AA_ENABLED = old
+
+
 class Monitor(unittest.TestCase):
     def test_config_diff(self):
         d = sysmon.config_diff({"a": "1", "b": "2", "c": "3"}, {"a": "1", "b": "X", "d": "4"})

@@ -7,7 +7,7 @@ echo "1. Live environment"
 miss=0; for b in i3 tint2 rofi xfce4-terminal thunar mousepad firefox nmap tcpdump nft nmcli python3 gdb radare2 binwalk zsh tmux; do
   command -v "$b" >/dev/null 2>&1 || { echo "   missing: $b"; miss=$((miss+1)); }; done
 [ $miss -eq 0 ] && echo "   OK: all bundled applications are present on the image" || echo "   $miss bundled application(s) missing"
-echo "2. Offline installation"; echo "   not applicable: NullOS 2.0 is a live image (no installer); nothing is downloaded at boot"
+echo "2. Offline installation"; echo "   supported: Install NullOS (start menu, live session only) copies the system from the ISO and installs GRUB from the image; nothing is downloaded"
 echo "3. Offline operation"
 echo "   works offline : desktop, terminal, bundled tools, firewall, Security Center, ns-sandbox, ns-lab (namespaces)"
 echo "   needs internet: ns-pack install/search (package index), updates, Firefox sync, ns-install tools"
