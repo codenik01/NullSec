@@ -33,11 +33,33 @@ printf '#!/bin/sh\nexit 101\n' > "$R/usr/sbin/policy-rc.d"; chmod +x "$R/usr/sbi
 echo "== 2/6 packages (names missing on this arch are skipped)"
 chroot "$R" apt-get update -qq
 : > "$W/pkgs.ok"
-for p in $(cat "$HERE/packages.txt"); do
+for p in $(sed 's/#.*//' "$HERE/packages.txt"); do   # comments (#) are ignored
   if [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; then echo "$p" >> "$W/pkgs.ok"; else echo "skip (not available on $ARCH): $p"; fi
 done
-cp "$W/pkgs.ok" "$R/pkgs.txt"
+echo 'Acquire::Retries "5";' > "$R/etc/apt/apt.conf.d/80retries"
+# The kernel is installed separately (below): ports.ubuntu.com (arm64) is often mid-sync, so the linux-image-generic
+# metapackage can point at a kernel whose linux-modules-extra is not published yet, which broke the whole install.
+grep -vx 'linux-image-generic' "$W/pkgs.ok" > "$R/pkgs.txt" || true
 chroot "$R" /bin/bash -c 'apt-get install -y --no-install-recommends $(tr "\n" " " < /pkgs.txt)'
+
+echo "== 2a/6 kernel (metapackage first, newest complete 6.8 kernel as fallback)"
+chroot "$R" /bin/bash -s <<'KERN'
+set -e
+export DEBIAN_FRONTEND=noninteractive
+cand() { [ -n "$(apt-cache policy "$1" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; }
+if apt-get install -y --no-install-recommends linux-image-generic; then exit 0; fi
+echo "WARN: linux-image-generic is not installable right now (mirror out of sync?); picking the newest complete kernel"
+apt-get update -qq || true
+if apt-get install -y --no-install-recommends linux-image-generic; then exit 0; fi
+for v in $(apt-cache pkgnames linux-image-6.8.0- | sed -n 's/^linux-image-\(6\.8\.0-[0-9]*\)-generic$/\1/p' | sort -t- -k2 -nr); do
+  cand "linux-image-$v-generic" && cand "linux-modules-$v-generic" || continue
+  pk="linux-image-$v-generic linux-modules-$v-generic"
+  cand "linux-modules-extra-$v-generic" && pk="$pk linux-modules-extra-$v-generic"
+  echo "trying kernel $v: $pk"
+  if apt-get install -y --no-install-recommends $pk; then echo "kernel $v installed"; exit 0; fi
+done
+echo "FATAL: no installable kernel found"; exit 1
+KERN
 
 echo "== 2b/6 extras: firefox (Mozilla repo), fastfetch, trim unneeded firmware"
 FFA=$([ "$ARCH" = arm64 ] && echo aarch64 || echo amd64)
@@ -70,6 +92,14 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
 # NOTE: a regular file, never a symlink to the binary (that overwrote lightdm once)
 rm -f /etc/X11/default-display-manager; echo /usr/sbin/lightdm > /etc/X11/default-display-manager
 systemctl enable lightdm NetworkManager nftables nullos-groups >/dev/null 2>&1 || true
+# wallpapers: only NullOS artwork is shipped (the picker lists /usr/share/backgrounds/nullos and the user's own folders)
+find /usr/share/backgrounds -mindepth 1 -maxdepth 1 ! -name nullos -exec rm -rf {} + 2>/dev/null || true
+rm -rf /usr/share/gnome-background-properties /usr/share/xfce4/backdrops /usr/share/wallpapers 2>/dev/null || true
+# NullOS Security Center: enable the service and refuse to build an image where it cannot work
+chmod +x /usr/lib/nullos/nullos-secd
+python3 -m compileall -q /usr/lib/nullos || { echo "FATAL: nullos-secd does not compile"; exit 1; }
+/usr/lib/nullos/nullos-secd --selftest || { echo "FATAL: nullos-secd selftest failed"; exit 1; }
+systemctl enable nullos-secd >/dev/null 2>&1 || { echo "FATAL: cannot enable nullos-secd"; exit 1; }
 systemctl set-default graphical.target
 for s in bluetooth cups cups-browsed avahi-daemon ModemManager apport snapd; do systemctl disable $s 2>/dev/null || true; systemctl mask $s 2>/dev/null || true; done
 sed -i 's/^NAME=.*/NAME="NullOS"/' /etc/os-release
@@ -104,29 +134,56 @@ echo "== 4/6 sanity checks"
 chroot "$R" /bin/bash -c 'lsinitramfs /boot/initrd.img-* | grep -q "scripts/casper"' || { echo "FATAL: casper missing from initramfs"; exit 1; }
 head -c4 "$R/usr/sbin/lightdm" | grep -q ELF || { echo "FATAL: /usr/sbin/lightdm is not a binary"; exit 1; }
 [ -f "$R/etc/X11/default-display-manager" ] && [ ! -L "$R/etc/X11/default-display-manager" ] || { echo "FATAL: default-display-manager"; exit 1; }
-for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
+for b in xfce4-terminal i3 openbox tint2 rofi zsh nmap thunar mousepad pipewire wireplumber bwrap jq nft apparmor_parser; do chroot "$R" which $b >/dev/null || { echo "FATAL: $b missing"; exit 1; }; done
 K=$(ls -1 "$R"/boot/vmlinuz-* | sort -V | tail -1); I=$(ls -1 "$R"/boot/initrd.img-* | sort -V | tail -1)
 cp "$K" "$ISO/casper/vmlinuz"; cp "$I" "$ISO/casper/initrd"; chmod 644 "$ISO/casper/vmlinuz"
+# installer components: a missing piece is reported loudly and recorded in release.json, but does not stop the build
+INSTALLER=1; for b in calamares unsquashfs grub-install efibootmgr parted sgdisk; do chroot "$R" which $b >/dev/null 2>&1 || { echo "WARN: installer component missing: $b"; INSTALLER=0; }; done
+[ -f "$R/etc/calamares/settings.conf" ] || { echo "WARN: /etc/calamares/settings.conf missing"; INSTALLER=0; }
+echo "installer: $([ $INSTALLER = 1 ] && echo ready || echo NOT READY)"
+# look & boot assets: a missing wallpaper/login theme/GRUB theme should fail the build, not your first boot
+for a in usr/share/backgrounds/nullos/red.jpg usr/share/backgrounds/nullos/blue.jpg usr/share/backgrounds/nullos/green.jpg usr/share/backgrounds/nullos/mono.jpg \
+         usr/share/themes/NullOS-Login/gtk-3.0/gtk.css usr/share/nullos/grub-theme/theme.txt usr/share/nullos/grub-theme/jbmono-16.pf2 usr/local/bin/ns-transparency; do
+  [ -e "$R/$a" ] || { echo "FATAL: missing $a"; exit 1; }
+done
+[ -x "$R/usr/lib/nullos/nullos-secd" ] && [ -f "$R/etc/systemd/system/nullos-secd.service" ] && [ -f "$R/usr/share/nullos/profiles/restricted-network.json" ] \
+  || { echo "FATAL: Security Center files missing from the image"; exit 1; }
 cleanup
+# measured AFTER cleanup: while /proc,/sys,/dev are still bind-mounted in the chroot, du walks the live host /proc and fails.
+# Release metadata must never be able to fail the build, so every step here is best-effort.
+mkdir -p "$OUT"
+INSTALLED_BYTES=$(du -sb --one-file-system "$R" 2>/dev/null | cut -f1 || true); INSTALLED_BYTES=${INSTALLED_BYTES:-0}
+dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' 2>/dev/null | sort > "$OUT/nullos-$ARCH.packages.txt" || : > "$OUT/nullos-$ARCH.packages.txt"
 
 echo "== 5/6 compress"
 mksquashfs "$R" "$ISO/casper/filesystem.squashfs" -comp zstd -Xcompression-level 10 -b 256K -noappend -e boot/initrd.img.old boot/vmlinuz.old
 echo "NullOS live" > "$ISO/.disk/info"
 cp "$HERE/grub-bg.jpg" "$ISO/boot/grub/bg.jpg" 2>/dev/null || true
+mkdir -p "$ISO/boot/grub/themes"; cp -r "$HERE/overlay/usr/share/nullos/grub-theme" "$ISO/boot/grub/themes/nullos"
 cat > "$ISO/boot/grub/grub.cfg" <<'EOF'
 set default=0
 set timeout=5
 insmod all_video
 insmod gfxterm
 insmod jpeg
+insmod png
 set gfxmode=auto
+loadfont /boot/grub/themes/nullos/jbmono-14.pf2
+loadfont /boot/grub/themes/nullos/jbmono-16.pf2
 terminal_output gfxterm
+insmod gfxmenu
+# if the theme cannot load, GRUB falls back to the plain colours below and the menu still works
 background_image /boot/grub/bg.jpg
 set menu_color_normal=light-gray/black
 set menu_color_highlight=black/light-red
+set theme=/boot/grub/themes/nullos/theme.txt
 
-menuentry "NullOS live" {
+menuentry "NullOS (Live Mode)" {
     linux /casper/vmlinuz boot=casper quiet loglevel=3 plymouth.enable=0 noprompt ---
+    initrd /casper/initrd
+}
+menuentry "Install NullOS" {
+    linux /casper/vmlinuz boot=casper quiet loglevel=3 plymouth.enable=0 noprompt nullos.install ---
     initrd /casper/initrd
 }
 menuentry "NullOS live (safe graphics)" {
@@ -142,3 +199,26 @@ EOF
 echo "== 6/6 iso"
 grub-mkrescue -o "$OUT/nullos-$ARCH.iso" "$ISO" -- -volid NULLOS
 ls -lh "$OUT/nullos-$ARCH.iso"
+# release metadata: exact sizes are measured, never assumed (design target ~1.4 GB for the ISO)
+ISO_BYTES=$(stat -c %s "$OUT/nullos-$ARCH.iso"); SQ_BYTES=$(stat -c %s "$ISO/casper/filesystem.squashfs")
+( cd "$OUT" && sha256sum "nullos-$ARCH.iso" > "nullos-$ARCH.iso.sha256" )
+INSTALLER=${INSTALLER:-0} ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
+import hashlib, json, os, subprocess, time
+out, arch = os.environ["OUT"], os.environ["ARCH"]
+iso = os.path.join(out, "nullos-%s.iso" % arch)
+h = hashlib.sha256()
+with open(iso, "rb") as f:
+    for c in iter(lambda: f.read(1 << 20), b""): h.update(c)
+try: commit = subprocess.check_output(["git", "-C", os.environ["HERE"], "rev-parse", "--short", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
+except Exception: commit = None
+pk = open(os.path.join(out, "nullos-%s.packages.txt" % arch)).read().count("\n")
+target = 1_400_000_000
+json.dump({"name": "NullOS", "version": "1.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
+           "iso_bytes": int(os.environ["ISO_BYTES"]), "iso_sha256": h.hexdigest(), "squashfs_bytes": int(os.environ["SQ_BYTES"]),
+           "installed_bytes_uncompressed": int(os.environ["INSTALLED_BYTES"]), "package_count": pk, "design_target_iso_bytes": target,
+           "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1",
+           "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "supported: the graphical installer copies the system from the ISO; no downloads",
+                       "offline_operation": "base system and bundled tools yes; ns-pack, updates and online services need internet"}},
+          open(os.path.join(out, "nullos-%s.release.json" % arch), "w"), indent=1)
+print("release metadata written: nullos-%s.release.json" % arch)
+PY
