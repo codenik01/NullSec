@@ -4,6 +4,9 @@ unset DESKTOP_STARTUP_ID
 m=${1:-}
 [ -n "$m" ] || m=$(printf '%s\n' tiling floating | rofi -dmenu -p "layout (log out to apply)") || exit 0
 case "$m" in tiling) s=i3;; floating) s=openbox;; *) echo "usage: ns-mode tiling|floating"; exit 1;; esac
-sudo ns-session "$s" && mkdir -p ~/.config/nullsec && echo "$m" > ~/.config/nullsec/mode
+sudo ns-session "$s" || { notify-send "layout" "could not switch to $m" 2>/dev/null; exit 1; }
+# tell the running AccountsService too (it caches the file), so the login screen offers the new session
+dbus-send --system --dest=org.freedesktop.Accounts --type=method_call "/org/freedesktop/Accounts/User$(id -u)" org.freedesktop.Accounts.User.SetXSession "string:$s" >/dev/null 2>&1 || true
+mkdir -p ~/.config/nullsec && echo "$m" > ~/.config/nullsec/mode
 notify-send "layout" "$m - logging out..." 2>/dev/null; sleep 2
 loginctl terminate-session "${XDG_SESSION_ID:-self}"

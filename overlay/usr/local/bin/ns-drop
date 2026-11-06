@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-unset DESKTOP_STARTUP_ID
-exec xfce4-terminal --drop-down

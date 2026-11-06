@@ -36,8 +36,30 @@ chroot "$R" apt-get update -qq
 for p in $(sed 's/#.*//' "$HERE/packages.txt"); do   # comments (#) are ignored
   if [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; then echo "$p" >> "$W/pkgs.ok"; else echo "skip (not available on $ARCH): $p"; fi
 done
-cp "$W/pkgs.ok" "$R/pkgs.txt"
+echo 'Acquire::Retries "5";' > "$R/etc/apt/apt.conf.d/80retries"
+# The kernel is installed separately (below): ports.ubuntu.com (arm64) is often mid-sync, so the linux-image-generic
+# metapackage can point at a kernel whose linux-modules-extra is not published yet, which broke the whole install.
+grep -vx 'linux-image-generic' "$W/pkgs.ok" > "$R/pkgs.txt" || true
 chroot "$R" /bin/bash -c 'apt-get install -y --no-install-recommends $(tr "\n" " " < /pkgs.txt)'
+
+echo "== 2a/6 kernel (metapackage first, newest complete 6.8 kernel as fallback)"
+chroot "$R" /bin/bash -s <<'KERN'
+set -e
+export DEBIAN_FRONTEND=noninteractive
+cand() { [ -n "$(apt-cache policy "$1" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; }
+if apt-get install -y --no-install-recommends linux-image-generic; then exit 0; fi
+echo "WARN: linux-image-generic is not installable right now (mirror out of sync?); picking the newest complete kernel"
+apt-get update -qq || true
+if apt-get install -y --no-install-recommends linux-image-generic; then exit 0; fi
+for v in $(apt-cache pkgnames linux-image-6.8.0- | sed -n 's/^linux-image-\(6\.8\.0-[0-9]*\)-generic$/\1/p' | sort -t- -k2 -nr); do
+  cand "linux-image-$v-generic" && cand "linux-modules-$v-generic" || continue
+  pk="linux-image-$v-generic linux-modules-$v-generic"
+  cand "linux-modules-extra-$v-generic" && pk="$pk linux-modules-extra-$v-generic"
+  echo "trying kernel $v: $pk"
+  if apt-get install -y --no-install-recommends $pk; then echo "kernel $v installed"; exit 0; fi
+done
+echo "FATAL: no installable kernel found"; exit 1
+KERN
 
 echo "== 2b/6 extras: firefox (Mozilla repo), fastfetch, trim unneeded firmware"
 FFA=$([ "$ARCH" = arm64 ] && echo aarch64 || echo amd64)

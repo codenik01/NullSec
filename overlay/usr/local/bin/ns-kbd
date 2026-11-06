@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-unset DESKTOP_STARTUP_ID
-# ns-kbd <layout>   e.g. ns-kbd us | gb | de | fr | in
-setxkbmap "${1:-us}" && echo "layout: ${1:-us}"

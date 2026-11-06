@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-unset DESKTOP_STARTUP_ID
-command -v firefox >/dev/null 2>&1 && exec firefox "$@"
-exec ns-term ns-run firefox firefox
