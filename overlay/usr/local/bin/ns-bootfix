@@ -32,7 +32,7 @@ case "$(uname -m)" in aarch64) A=aa64; TGT=arm64-efi;; *) A=x64; TGT=x86_64-efi;
 
 if [ "$mode" = --repair ]; then
   say "reinstalling GRUB ($TGT) and regenerating grub.cfg..."
-  grub-install --target="$TGT" --efi-directory=/boot/efi --bootloader-id=NullOS --force 2>&1 | tail -3
+  /usr/local/bin/ns-grub-install --target="$TGT" --efi-directory=/boot/efi --bootloader-id=NullOS --force 2>&1 | tail -3
   update-grub 2>&1 | tail -3
 fi
 if ! grep -q '^menuentry' /boot/grub/grub.cfg 2>/dev/null; then say "grub.cfg missing or empty: regenerating"; update-grub >/dev/null 2>&1 || grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1; fi
@@ -41,9 +41,10 @@ if command -v efibootmgr >/dev/null; then
   # 1. NullOS entry must exist (re-create it if only the files are there)
   if ! efibootmgr 2>/dev/null | grep -q 'NullOS'; then
     ef=$(findmnt -no SOURCE /boot/efi 2>/dev/null)
-    if [ -n "$ef" ] && [ -f "/boot/efi/EFI/NullOS/shim$A.efi" ]; then
+    L=grub$A.efi; [ -f "/boot/efi/EFI/NullOS/shim$A.efi" ] && ! [ -f /boot/efi/EFI/NullOS/.nosb ] && L=shim$A.efi
+    if [ -n "$ef" ] && [ -f "/boot/efi/EFI/NullOS/$L" ]; then
       disk=/dev/$(lsblk -no PKNAME "$ef"); part=$(cat "/sys/class/block/$(basename "$ef")/partition" 2>/dev/null)
-      efibootmgr -c -d "$disk" -p "$part" -L NullOS -l "\\EFI\\NullOS\\shim$A.efi" >/dev/null 2>&1 && say "re-created the NullOS boot entry"
+      efibootmgr -c -d "$disk" -p "$part" -L NullOS -l "\\EFI\\NullOS\\$L" >/dev/null 2>&1 && say "re-created the NullOS boot entry"
     fi
   fi
   # 2. delete stale entries the FIRMWARE made for removable media (the ISO / USB stick / CD that is no longer there).
@@ -60,6 +61,6 @@ if command -v efibootmgr >/dev/null; then
   fi
 fi
 # 4. the ESP must hold the loaders GRUB needs
-miss=0; for f in shim$A.efi grub$A.efi; do [ -f "/boot/efi/EFI/NullOS/$f" ] || { say "WARNING: /boot/efi/EFI/NullOS/$f is missing (run: sudo ns-bootfix --repair)"; miss=1; }; done
+miss=0; for f in grub$A.efi; do [ -f "/boot/efi/EFI/NullOS/$f" ] || { say "WARNING: /boot/efi/EFI/NullOS/$f is missing (run: sudo ns-bootfix --repair)"; miss=1; }; done
 [ $miss = 0 ] && say "boot files OK"
 exit 0

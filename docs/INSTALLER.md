@@ -38,7 +38,7 @@ Both the live ISO and the installed system show the NullOS GRUB menu (logo, red-
 After installing and removing the ISO, a VM's firmware may print `BdsDxe: failed to load Boot0001 "UEFI ... USB HARDDRIVE" ... Not Found`
 before the boot menu. That is only the firmware reporting that the *removed ISO* (a stale boot entry) is gone, and then it
 continues with the next entry: `Boot0005 "NullOS" ... \EFI\NullOS\shimaa64.efi` (shimx64 on amd64), which is the installed system.
-The installer now removes that stale entry itself (`ns-bootfix --post-install`, step `shellprocess@postboot`) and puts NullOS first in the boot order, so the message should not appear on new installs.
+When Secure Boot is off (UTM, QEMU, most VMs) the installer now installs the plain unsigned GRUB directly (`ns-grub-install`) instead of the shim + signed-GRUB chain, which is where the VM could stall on the firmware logo; with Secure Boot on it still uses shim. The installer also removes that stale entry itself (`ns-bootfix --post-install`, step `shellprocess@postboot`) and puts NullOS first in the boot order, so the message should not appear on new installs.
 **Already installed and seeing it, or not reaching GRUB?** Inside NullOS: `sudo ns-bootfix` (tidy) or `sudo ns-bootfix --repair` (reinstall GRUB). If it will not boot at all, boot the live ISO, open a terminal and run `sudo ns-bootfix --live /dev/ROOT /dev/ESP` (e.g. `/dev/vda2 /dev/vda1`; the ESP is auto-detected if omitted), then remove the ISO. Manual way:  `sudo efibootmgr` to list entries and `sudo efibootmgr -b 0001 -B` to delete the stale one.
 
 ## Size
