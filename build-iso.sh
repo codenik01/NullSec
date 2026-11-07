@@ -36,30 +36,31 @@ chroot "$R" apt-get update -qq
 for p in $(sed 's/#.*//' "$HERE/packages.txt"); do   # comments (#) are ignored
   if [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; then echo "$p" >> "$W/pkgs.ok"; else echo "skip (not available on $ARCH): $p"; fi
 done
-echo 'Acquire::Retries "5";' > "$R/etc/apt/apt.conf.d/80retries"
-# The kernel is installed separately (below): ports.ubuntu.com (arm64) is often mid-sync, so the linux-image-generic
-# metapackage can point at a kernel whose linux-modules-extra is not published yet, which broke the whole install.
-grep -vx 'linux-image-generic' "$W/pkgs.ok" > "$R/pkgs.txt" || true
+# --- kernel guard begin ---
+# Ubuntu sometimes publishes a new kernel metapackage before all of its binary packages exist (mirror lag, half-synced pockets).
+# linux-image-generic then depends on a kernel that cannot be installed and the whole build dies. Detect that and pin the newest
+# kernel whose image, modules AND modules-extra are all available (the newest complete kernel is what we would ship anyway).
+KERNEL_PINNED=""
+if grep -qx linux-image-generic "$W/pkgs.ok" && ! chroot "$R" apt-get -s install linux-image-generic >/dev/null 2>&1; then
+  echo "WARN: linux-image-generic is not installable right now (the Ubuntu archive is part-way through publishing a kernel)"
+  # stay in the SAME kernel series the metapackage points to (6.8.0-NNN); never jump to a different series such as an HWE 6.x kernel
+  series=$(chroot "$R" apt-cache policy linux-image-generic 2>/dev/null | awk '/Candidate/{print $2}'); series=${series%%-*}
+  [ -n "$series" ] && [ "$series" != "(none)" ] || { echo "FATAL: cannot determine the kernel series of linux-image-generic"; exit 1; }
+  for v in $(chroot "$R" apt-cache pkgnames linux-image- | sed -nE "s/^linux-image-(${series//./\\.}-[0-9]+)-generic\$/\\1/p" | sort -V -r); do
+    have=1
+    for p in "linux-image-$v-generic" "linux-modules-$v-generic" "linux-modules-extra-$v-generic"; do
+      [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ] || have=0
+    done
+    if [ $have = 1 ] && chroot "$R" apt-get -s install "linux-image-$v-generic" "linux-modules-$v-generic" "linux-modules-extra-$v-generic" >/dev/null 2>&1; then KERNEL_PINNED=$v; break; fi
+  done
+  [ -n "$KERNEL_PINNED" ] || { echo "FATAL: the archive has no complete generic kernel right now; try again later"; exit 1; }
+  sed -i '/^linux-image-generic$/d' "$W/pkgs.ok"
+  printf 'linux-image-%s-generic\nlinux-modules-%s-generic\nlinux-modules-extra-%s-generic\n' "$KERNEL_PINNED" "$KERNEL_PINNED" "$KERNEL_PINNED" >> "$W/pkgs.ok"
+  echo "kernel pinned to $KERNEL_PINNED (run 'sudo apt install linux-image-generic' later, once Ubuntu has finished publishing, to get automatic kernel updates)"
+fi
+# --- kernel guard end ---
+cp "$W/pkgs.ok" "$R/pkgs.txt"
 chroot "$R" /bin/bash -c 'apt-get install -y --no-install-recommends $(tr "\n" " " < /pkgs.txt)'
-
-echo "== 2a/6 kernel (metapackage first, newest complete 6.8 kernel as fallback)"
-chroot "$R" /bin/bash -s <<'KERN'
-set -e
-export DEBIAN_FRONTEND=noninteractive
-cand() { [ -n "$(apt-cache policy "$1" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; }
-if apt-get install -y --no-install-recommends linux-image-generic; then exit 0; fi
-echo "WARN: linux-image-generic is not installable right now (mirror out of sync?); picking the newest complete kernel"
-apt-get update -qq || true
-if apt-get install -y --no-install-recommends linux-image-generic; then exit 0; fi
-for v in $(apt-cache pkgnames linux-image-6.8.0- | sed -n 's/^linux-image-\(6\.8\.0-[0-9]*\)-generic$/\1/p' | sort -t- -k2 -nr); do
-  cand "linux-image-$v-generic" && cand "linux-modules-$v-generic" || continue
-  pk="linux-image-$v-generic linux-modules-$v-generic"
-  cand "linux-modules-extra-$v-generic" && pk="$pk linux-modules-extra-$v-generic"
-  echo "trying kernel $v: $pk"
-  if apt-get install -y --no-install-recommends $pk; then echo "kernel $v installed"; exit 0; fi
-done
-echo "FATAL: no installable kernel found"; exit 1
-KERN
 
 echo "== 2b/6 extras: firefox (Mozilla repo), fastfetch, trim unneeded firmware"
 FFA=$([ "$ARCH" = arm64 ] && echo aarch64 || echo amd64)
@@ -101,7 +102,8 @@ python3 -m compileall -q /usr/lib/nullos || { echo "FATAL: nullos-secd does not 
 /usr/lib/nullos/nullos-secd --selftest || { echo "FATAL: nullos-secd selftest failed"; exit 1; }
 systemctl enable nullos-secd >/dev/null 2>&1 || { echo "FATAL: cannot enable nullos-secd"; exit 1; }
 systemctl set-default graphical.target
-for s in bluetooth cups cups-browsed avahi-daemon ModemManager apport snapd; do systemctl disable $s 2>/dev/null || true; systemctl mask $s 2>/dev/null || true; done
+systemctl unmask bluetooth >/dev/null 2>&1 || true; systemctl enable bluetooth >/dev/null 2>&1 || true   # Bluetooth is on (turn it off with: ns-bluetooth off)
+for s in cups cups-browsed avahi-daemon ModemManager apport snapd; do systemctl disable $s 2>/dev/null || true; systemctl mask $s 2>/dev/null || true; done
 sed -i 's/^NAME=.*/NAME="NullOS"/' /etc/os-release
 sed -i 's/^DISTRIB_DESCRIPTION=.*/DISTRIB_DESCRIPTION="NullOS"/' /etc/lsb-release 2>/dev/null || true
 chmod 440 /etc/sudoers.d/90-nullos-session 2>/dev/null || true
@@ -116,7 +118,7 @@ mkdir -p /var/lib/apt/lists/partial
 for u in plymouth-start plymouth-quit plymouth-quit-wait plymouth-read-write plymouth-switch-root plymouth-reboot plymouth-poweroff plymouth-halt plymouth-kexec; do
   systemctl mask $u.service >/dev/null 2>&1 || true
 done
-for p in casper lightdm lightdm-gtk-greeter i3-wm openbox dbus-user-session; do
+for p in casper lightdm lightdm-gtk-greeter i3-wm openbox dbus-user-session bluez blueman; do
   dpkg -s $p 2>/dev/null | grep -q 'Status: install ok installed' || { echo "FATAL: $p is not installed"; exit 1; }
 done
 chmod -x /etc/update-motd.d/* 2>/dev/null || true
@@ -153,6 +155,8 @@ cleanup
 # Release metadata must never be able to fail the build, so every step here is best-effort.
 mkdir -p "$OUT"
 INSTALLED_BYTES=$(du -sb --one-file-system "$R" 2>/dev/null | cut -f1 || true); INSTALLED_BYTES=${INSTALLED_BYTES:-0}
+KERNEL_VER=$(ls "$R"/boot/vmlinuz-* 2>/dev/null | sort -V | tail -1 | sed "s#.*/vmlinuz-##" || true); KERNEL_VER=${KERNEL_VER:-unknown}
+KERNEL_META=0; dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Status}' linux-image-generic 2>/dev/null | grep -q "install ok installed" && KERNEL_META=1 || true
 dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' 2>/dev/null | sort > "$OUT/nullos-$ARCH.packages.txt" || : > "$OUT/nullos-$ARCH.packages.txt"
 
 echo "== 5/6 compress"
@@ -202,7 +206,7 @@ ls -lh "$OUT/nullos-$ARCH.iso"
 # release metadata: exact sizes are measured, never assumed (design target ~1.4 GB for the ISO)
 ISO_BYTES=$(stat -c %s "$OUT/nullos-$ARCH.iso"); SQ_BYTES=$(stat -c %s "$ISO/casper/filesystem.squashfs")
 ( cd "$OUT" && sha256sum "nullos-$ARCH.iso" > "nullos-$ARCH.iso.sha256" )
-INSTALLER=${INSTALLER:-0} ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
+INSTALLER=${INSTALLER:-0} KERNEL_VER=${KERNEL_VER:-unknown} KERNEL_META=${KERNEL_META:-0} ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
 import hashlib, json, os, subprocess, time
 out, arch = os.environ["OUT"], os.environ["ARCH"]
 iso = os.path.join(out, "nullos-%s.iso" % arch)
@@ -216,7 +220,7 @@ target = 1_400_000_000
 json.dump({"name": "NullOS", "version": "1.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
            "iso_bytes": int(os.environ["ISO_BYTES"]), "iso_sha256": h.hexdigest(), "squashfs_bytes": int(os.environ["SQ_BYTES"]),
            "installed_bytes_uncompressed": int(os.environ["INSTALLED_BYTES"]), "package_count": pk, "design_target_iso_bytes": target,
-           "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1",
+           "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1", "kernel": os.environ.get("KERNEL_VER"), "kernel_metapackage_installed": os.environ.get("KERNEL_META") == "1",
            "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "supported: the graphical installer copies the system from the ISO; no downloads",
                        "offline_operation": "base system and bundled tools yes; ns-pack, updates and online services need internet"}},
           open(os.path.join(out, "nullos-%s.release.json" % arch), "w"), indent=1)

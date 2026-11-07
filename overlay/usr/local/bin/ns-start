@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# NullOS start menu (logo button / Super+Space): apps, settings, power. Everything is clickable.
+sub() { rofi -dmenu -i -p "$1"; }
+c=$({ printf '%s\n' "Applications" "Files" "Terminal" "Browser" "Text editor" "Calculator" "PDF viewer" "Images" "Archives" "Task manager" "Screenshot" "Security tools" "Security Center" "Network / Wi-Fi" "Bluetooth" "Settings >" "Power >"; grep -qw boot=casper /proc/cmdline 2>/dev/null && echo "Install NullOS"; } | sub nullos) || exit 0
+case "$c" in
+  Applications) exec rofi -show drun;;
+  Files) exec thunar;;
+  Terminal) exec ns-term;;
+  Browser) exec ns-browser;;
+  "Text editor") exec mousepad;;
+  Calculator) exec mate-calc;;
+  "PDF viewer") exec atril;;
+  Images) exec ristretto;;
+  Archives) exec engrampa;;
+  "Task manager") exec xfce4-taskmanager;;
+  Screenshot) exec xfce4-screenshooter;;
+  "Security tools") exec ns-menu;;
+  "Security Center") exec ns-security;;
+  "Install NullOS") exec ns-installer;;
+  "Network / Wi-Fi") exec ns-net;;
+  Bluetooth) exec ns-bluetooth;;
+  "Settings >") exec ns-settings;;
+  "Power >") exec ns-power;;
+esac

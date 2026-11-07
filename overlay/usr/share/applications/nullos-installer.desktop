@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install NullOS
+Comment=Install NullOS to this computer (live session only)
+Exec=ns-installer
+Icon=nullos
+Terminal=false
+Categories=System;

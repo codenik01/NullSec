@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# ns-wallpaper [pick|restore|default|plain|<image file>]
+# The default wallpaper follows the theme: red (default), blue, green, mono (black & white).
+C=~/.config/nullsec; mkdir -p "$C"
+BGD=/usr/share/backgrounds/nullos
+default_img() {
+  case "$(cat "$C/accent" 2>/dev/null || echo e5484d)" in
+    4c8dff) echo "$BGD/blue.jpg";; 3ecf8e) echo "$BGD/green.jpg";; e0e0e0) echo "$BGD/mono.jpg";; *) echo "$BGD/red.jpg";;
+  esac
+}
+plain() { python3 - "$(cat "$C/accent" 2>/dev/null || echo e5484d)" "$C/plain.png" <<'PY'
+import sys,zlib,struct
+h,out=sys.argv[1],sys.argv[2]; r,g,b=int(h[0:2],16),int(h[2:4],16),int(h[4:6],16)
+W,H=1920,1080; bg=bytes([10,10,10])*W; ln=bytearray(bg)
+for x in range(860,1060): ln[3*x:3*x+3]=bytes([r,g,b])
+raw=b"".join(b"\x00"+(bytes(ln) if 538<=y<=540 else bg) for y in range(H))
+def ch(t,d): return struct.pack(">I",len(d))+t+d+struct.pack(">I",zlib.crc32(t+d)&0xffffffff)
+open(out,"wb").write(b"\x89PNG\r\n\x1a\n"+ch(b"IHDR",struct.pack(">IIBBBBB",W,H,8,2,0,0,0))+ch(b"IDAT",zlib.compress(raw,6))+ch(b"IEND",b""))
+PY
+}
+apply() {
+  case "$1" in
+    default) img=$(default_img);;
+    red|blue|green|mono) img="$BGD/$1.jpg";;
+    plain) plain; img="$C/plain.png";;
+    *) img=$1;;
+  esac
+  [ -f "$img" ] || img=$(default_img)
+  feh --bg-fill "$img" 2>/dev/null || xsetroot -solid "#0a0a0a"
+}
+a=${1:-pick}
+if [ "$a" = pick ]; then
+  list=$( { echo "NullOS (default for this theme)"; echo "NullOS red"; echo "NullOS blue"; echo "NullOS green"; echo "NullOS black & white"; echo "plain black + accent line"
+            find ~/Pictures ~/Downloads ~/Desktop -maxdepth 2 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) 2>/dev/null; } )
+  c=$(printf '%s\n' "$list" | rofi -dmenu -i -p wallpaper) || exit 0
+  case "$c" in "NullOS (default"*) a=default;; "NullOS red") a=red;; "NullOS blue") a=blue;; "NullOS green") a=green;; "NullOS black"*) a=mono;; "plain black"*) a=plain;; *) a=$c;; esac
+  echo "$a" > "$C/wallpaper"
+elif [ "$a" = restore ]; then
+  a=$(cat "$C/wallpaper" 2>/dev/null || echo default)
+else
+  echo "$a" > "$C/wallpaper"
+fi
+apply "$a"

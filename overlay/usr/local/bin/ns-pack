@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# ns-pack: tool manager (Ubuntu-compatible sources only; no Kali/Parrot repositories)
+#   list | profiles | search TERM | info NAME | install NAME|PROFILE|apt:PKG | remove PKG | update
+#   (add = install, rm = remove: the original commands keep working)
+T=/usr/share/nullsec/tools.tsv; K=/usr/share/nullsec/packs.tsv
+profiles() { cut -f1 "$K" | sort -u; }
+spec_of() { awk -F'\t' -v x="$1" '$2==x{print $4; exit}' "$T"; }
+installed() { # installed? for a spec
+  case "$1" in apt:*) dpkg -s "${1#apt:}" 2>/dev/null | grep -q 'Status: install ok installed';; *) command -v "$1" >/dev/null 2>&1 || [ -x "$HOME/.local/bin/$1" ];; esac; }
+case "${1:-}" in
+  list)
+    echo "installers: subfinder httpx nuclei amass nikto responder exploitdb netexec impacket bloodhound volatility3 evil-winrm seclists firefox metasploit ghidra prowler scoutsuite"
+    echo "profiles:   $(profiles | tr '\n' ' ')all"
+    echo "or: ns-pack add apt:<package>   |   ns-pack search <term>   |   ns-pack info <name>";;
+  profiles) for p in $(profiles); do printf '%-10s %s\n' "$p" "$(awk -F'\t' -v p="$p" '$1==p{printf "%s ",$2}' "$K" | sed 's/apt://g')"; done; echo "all        every profile above";;
+  search)
+    [ -n "${2:-}" ] || { echo "usage: ns-pack search TERM"; exit 2; }
+    echo "-- NullOS tool list"; grep -i -- "$2" "$T" | awk -F'\t' '{printf "%-10s %-20s %s\n",$1,$2,$3}'
+    echo "-- Ubuntu archive"; apt-cache search -- "$2" 2>/dev/null | head -15 || true
+    compgen -G '/var/lib/apt/lists/*Packages*' >/dev/null || echo "(no package index yet: run ns-pack update, needs internet)";;
+  info)
+    n=${2:-}; [ -n "$n" ] || { echo "usage: ns-pack info NAME"; exit 2; }
+    row=$(awk -F'\t' -v x="$n" '$2==x{print; exit}' "$T")
+    [ -n "$row" ] && awk -F'\t' '{printf "name:      %s\ncategory:  %s\nabout:     %s\ninstaller: %s\n",$2,$1,$3,$4}' <<<"$row"
+    s=$(spec_of "$n"); [ -n "$s" ] || s="apt:$n"
+    if installed "$s" || installed "$n"; then echo "installed: yes"; else echo "installed: no"; fi
+    case "$s" in apt:*) apt-cache policy "${s#apt:}" 2>/dev/null | sed -n '1,3p';; esac;;
+  install|add)
+    n=${2:-}; [ -n "$n" ] || { echo "usage: ns-pack install NAME|PROFILE|apt:PKG"; exit 2; }
+    if [ "$n" = all ]; then list=$(cut -f2 "$K" | sort -u); elif profiles | grep -qx "$n"; then list=$(awk -F'\t' -v p="$n" '$1==p{print $2}' "$K"); else list=""; fi
+    if [ -n "$list" ]; then
+      ok=0; fail=0; for s in $list; do
+        if installed "$s"; then echo "have    $s"; continue; fi
+        if ns-install "$s"; then ok=$((ok+1)); else echo "FAILED  $s"; fail=$((fail+1)); fi
+      done; echo "profile $n: $ok installed, $fail failed"; [ $fail -eq 0 ]
+    else ns-install "$n"; fi;;
+  remove|rm) [ -n "${2:-}" ] || { echo "usage: ns-pack remove PKG"; exit 2; }; ns-install __purge "$2";;
+  update) ns-install __update;;
+  *) echo "usage: ns-pack list | profiles | search TERM | info NAME | install NAME|PROFILE|apt:PKG | remove PKG | update";;
+esac

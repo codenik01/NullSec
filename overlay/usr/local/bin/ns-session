@@ -1,19 +1,39 @@
 #!/usr/bin/env bash
 unset DESKTOP_STARTUP_ID
-# sudo ns-session openbox|i3   (takes effect after logout)
-[ "$1" = openbox ] || [ "$1" = i3 ] || { echo "usage: sudo ns-session openbox|i3"; exit 1; }
-s=$1; C=/etc/lightdm/lightdm.conf.d/99-nullsec.conf
-# 1) system default (the live session auto-login reads this). Add the key if it is missing instead of silently doing nothing.
-mkdir -p "${C%/*}"; [ -f "$C" ] || printf '[Seat:*]\n' > "$C"
-if grep -q '^user-session=' "$C"; then sed -i "s/^user-session=.*/user-session=$s/" "$C"; else sed -i "/^\[Seat:\*\]/a user-session=$s" "$C"; fi
-# 2) the user's own saved session. On an installed system there is no auto-login: lightdm-gtk-greeter uses the session saved for
-#    the user (AccountsService / ~/.dmrc), and that overrides user-session above, so the switch to floating never took effect.
-u=${SUDO_USER:-}
-if [ -n "$u" ] && [ "$u" != root ] && getent passwd "$u" >/dev/null; then
-  f=/var/lib/AccountsService/users/$u; mkdir -p "${f%/*}"; [ -f "$f" ] || : > "$f"
-  grep -q '^\[User\]' "$f" || printf '[User]\n' >> "$f"
-  if grep -q '^XSession=' "$f"; then sed -i "s/^XSession=.*/XSession=$s/" "$f"; else sed -i "/^\[User\]/a XSession=$s" "$f"; fi
-  h=$(getent passwd "$u" | cut -d: -f6)
-  if [ -d "$h" ]; then printf '[Desktop]\nSession=%s\n' "$s" > "$h/.dmrc"; chown "$u": "$h/.dmrc"; fi
+# sudo ns-session openbox|i3 [--apply]   (root via sudo; run by ns-mode)
+# Sets the desktop session EVERYWHERE LightDM or the greeter may look, because any one of them can override the others:
+#   * /etc/lightdm/lightdm.conf  (written by the installer; LightDM reads it LAST, so it beats lightdm.conf.d/99-nullsec.conf)
+#   * /etc/lightdm/lightdm.conf.d/*.conf  (user-session, and autologin-session when present)
+#   * the user's remembered session: ~/.dmrc and AccountsService (the greeter prefers these over the config files)
+# --apply restarts LightDM (it only reads its config at start-up, so a plain logout keeps the old session in live/auto-login mode).
+s=${1:-}; [ "$s" = openbox ] || [ "$s" = i3 ] || { echo "usage: sudo ns-session openbox|i3 [--apply]"; exit 1; }
+[ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
+set_key() {  # set_key FILE KEY VALUE : replace KEY if present (in [Seat:*]), otherwise add it under [Seat:*]
+  f=$1; k=$2; v=$3
+  if grep -q "^[#[:space:]]*$k=" "$f" 2>/dev/null; then sed -i "s|^[#[:space:]]*$k=.*|$k=$v|" "$f"
+  elif grep -q '^\[Seat:\*\]' "$f" 2>/dev/null; then sed -i "/^\[Seat:\*\]/a $k=$v" "$f"
+  else printf '[Seat:*]\n%s=%s\n' "$k" "$v" >> "$f"; fi
+}
+mkdir -p /etc/lightdm/lightdm.conf.d
+[ -f /etc/lightdm/lightdm.conf.d/99-nullsec.conf ] || printf '[Seat:*]\nuser-session=%s\n' "$s" > /etc/lightdm/lightdm.conf.d/99-nullsec.conf
+for f in /etc/lightdm/lightdm.conf /etc/lightdm/lightdm.conf.d/*.conf; do
+  [ -f "$f" ] || continue
+  if grep -q '^[[:space:]]*\(user-session\|autologin-session\)=' "$f"; then
+    sed -i "s|^[[:space:]]*user-session=.*|user-session=$s|; s|^[[:space:]]*autologin-session=.*|autologin-session=$s|" "$f"
+  fi
+done
+# the file lightdm reads last must carry the value even if it had no session line yet
+set_key /etc/lightdm/lightdm.conf.d/99-nullsec.conf user-session "$s"
+grep -q '^autologin-user=' /etc/lightdm/lightdm.conf /etc/lightdm/lightdm.conf.d/*.conf 2>/dev/null && \
+  set_key "$(grep -l '^autologin-user=' /etc/lightdm/lightdm.conf /etc/lightdm/lightdm.conf.d/*.conf 2>/dev/null | tail -1)" autologin-session "$s"
+# remembered session of the human who ran sudo (and of the live user)
+u=${SUDO_USER:-}; [ -n "$u" ] && [ "$u" != root ] || u=$(logname 2>/dev/null || true)
+if [ -n "$u" ] && [ "$u" != root ] && home=$(getent passwd "$u" | cut -d: -f6) && [ -d "$home" ]; then
+  printf '[Desktop]\nSession=%s\n' "$s" > "$home/.dmrc"; chown "$u": "$home/.dmrc"
+  uid=$(id -u "$u"); busctl --system call org.freedesktop.Accounts /org/freedesktop/Accounts/User"$uid" org.freedesktop.Accounts.User SetXSession s "$s" >/dev/null 2>&1 || true
+  # the GTK greeter also keeps its own copy of the last session
+  for st in /var/lib/lightdm/.cache/lightdm-gtk-greeter/state; do [ -f "$st" ] && sed -i "s|^last-session=.*|last-session=$s|" "$st"; done
 fi
-echo "session set to $s; log out to apply"
+[ -f "/usr/share/xsessions/$s.desktop" ] || echo "warning: /usr/share/xsessions/$s.desktop is missing"
+echo "session set to $s"
+if [ "${2:-}" = --apply ]; then systemctl --no-block restart lightdm; else echo "log out to apply"; fi

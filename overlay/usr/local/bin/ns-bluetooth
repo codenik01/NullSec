@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# ns-bluetooth [manager|on|off|status] : Bluetooth (BlueZ + Blueman). No argument opens the device manager (pair / connect).
+case "${1:-manager}" in
+  on)  rfkill unblock bluetooth 2>/dev/null; systemctl start bluetooth 2>/dev/null
+       sleep 1; bluetoothctl power on 2>&1 | tail -1;;
+  off) bluetoothctl power off 2>&1 | tail -1; rfkill block bluetooth 2>/dev/null;;
+  status) echo "--- service"; systemctl is-active bluetooth 2>&1; echo "--- radio"; rfkill list bluetooth 2>&1
+          echo "--- adapter"; bluetoothctl show 2>&1 | grep -E "Controller|Powered|Discoverable|Name" ; echo "--- devices"; bluetoothctl devices 2>&1;;
+  manager|"") rfkill unblock bluetooth 2>/dev/null
+       pgrep -x blueman-applet >/dev/null || ( blueman-applet >/dev/null 2>&1 & )
+       exec blueman-manager;;
+  *) echo "usage: ns-bluetooth [manager|on|off|status]"; exit 1;;
+esac

@@ -1,0 +1,21 @@
+#!/bin/sh
+# NullOS boot menu theme. grub-mkconfig runs every script in /etc/grub.d (also on kernel updates).
+# This one emits the theme unconditionally, so the menu is themed even where grub-mkconfig's own GRUB_THEME
+# path detection (which needs grub-probe) cannot resolve the path. Paths are relative to $root, the device GRUB booted from.
+cat <<'THEME'
+# --- NullOS theme ---
+set nullos_dir=
+if [ -f /boot/grub/themes/nullos/theme.txt ]; then
+  set nullos_dir=/boot/grub/themes/nullos
+elif [ -f /grub/themes/nullos/theme.txt ]; then
+  set nullos_dir=/grub/themes/nullos
+fi
+if [ -n "${nullos_dir}" ]; then
+  insmod png
+  insmod gfxmenu
+  loadfont ${nullos_dir}/jbmono-14.pf2
+  loadfont ${nullos_dir}/jbmono-16.pf2
+  set theme=${nullos_dir}/theme.txt
+fi
+# --- end NullOS theme ---
+THEME

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "standard",
+  "name": "Standard",
+  "version": "1.0.0",
+  "description": "Everyday use, research and lab work. Uses the normal NullOS baseline (default-deny inbound firewall, MAC randomization for Wi-Fi, kernel hardening). No additional restrictions are applied.",
+  "on_failure": "report",
+  "controls": {
+    "monitor": { "enabled": true, "required": false, "interval": 60 }
+  }
+}

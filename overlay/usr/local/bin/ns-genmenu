@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# builds the Openbox right-click menu from tools.tsv
+T=/usr/share/nullsec/tools.tsv; OUT=${1:-$HOME/.config/openbox/menu.xml}
+{
+echo '<?xml version="1.0" encoding="UTF-8"?><openbox_menu xmlns="http://openbox.org/3.4/menu">'
+echo '<menu id="root-menu" label="nullsec">'
+echo '<item label="terminal"><action name="Execute"><command>ns-term</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="browser"><action name="Execute"><command>ns-browser</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="run..."><action name="Execute"><command>rofi -show run</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<separator/>'
+for c in $(cut -f1 $T | sort -u); do
+  echo "<menu id=\"m-$c\" label=\"$c\">"
+  awk -F'\t' -v c="$c" '$1==c{printf "<item label=\"%s\"><action name=\"Execute\"><command>ns-term ns-run %s %s</command><startupnotify><enabled>no</enabled></startupnotify></action></item>\n",$2,$2,$4}' $T
+  echo '</menu>'
+done
+echo '<separator/>'
+echo '<item label="network"><action name="Execute"><command>ns-net</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="bluetooth"><action name="Execute"><command>ns-bluetooth</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="security center"><action name="Execute"><command>ns-security</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="install nullos"><action name="Execute"><command>ns-installer</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<menu id="m-theme" label="theme">'
+for t in red blue green; do echo "<item label=\"$t\"><action name=\"Execute\"><command>ns-theme $t</command><startupnotify><enabled>no</enabled></startupnotify></action></item>"; done
+echo '</menu>'
+echo '<menu id="m-system" label="system">'
+echo '<item label="dropdown terminal (F12)"><action name="Execute"><command>ns-drop</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="effects on/off"><action name="Execute"><command>ns-fx toggle</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="diagnose"><action name="Execute"><command>ns-term ns-diag</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="install more tools"><action name="Execute"><command>ns-term ns-pack list</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '<item label="lock"><action name="Execute"><command>i3lock -c 0a0a0a</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '</menu>'
+echo '<item label="power"><action name="Execute"><command>ns-power</command><startupnotify><enabled>no</enabled></startupnotify></action></item>'
+echo '</menu></openbox_menu>'
+} > "$OUT"

@@ -30,7 +30,12 @@ Right-click = Copy / Paste / Paste Selection / Open Tab / Preferences. Files (Th
 `sudo bash build-iso.sh amd64|arm64` (native arch) or GitHub Actions > build-iso. Each build writes `nullos-<arch>.release.json` (exact size, checksum, installer flag). `sudo bash tests/run-all.sh` runs every test group.
 
 ## Known limits
-See `docs/SECURITY.md` and `docs/INSTALLER.md` ("Not verified"). In short: the installer's disk writing and the first boot of an installed system need a real-VM check on each release; IPv6 and NetworkManager-specific controls report *unsupported/unknown* rather than guess; `ns-autotile` (auto-dwindle) has a pre-existing Python syntax error and does not run: replace its line 2 with `import os; os.environ.pop("DESKTOP_STARTUP_ID", None)` to enable it.
+See `docs/SECURITY.md` and `docs/INSTALLER.md` ("Not verified"). In short: the installer's disk writing and the first boot of an installed system need a real-VM check on each release; IPv6 and NetworkManager-specific controls report *unsupported/unknown* rather than guess; not yet verified on real hardware: Bluetooth pairing (needs a USB/passthrough adapter in a VM) and the boot fix on UTM.
+
+## Fixes in this update
+- **Floating mode now really switches.** `ns-session` sets the session in every place LightDM/the greeter look (`/etc/lightdm/lightdm.conf`, which the installer writes and which beat the old setting, `conf.d`, `~/.dmrc`, AccountsService) and `ns-mode` restarts LightDM so it is applied (live auto-login only reads its config at start). `ns-autotile` syntax error fixed.
+- **Boot after install**: stale firmware entry for the removed ISO is deleted and NullOS put first (`ns-bootfix`, also a repair tool, see `docs/INSTALLER.md`).
+- **Bluetooth**: BlueZ + Blueman, enabled at boot, tray applet, `ns-bluetooth [manager|on|off|status]`, entries in the start menu and Settings, PipeWire audio over Bluetooth.
 
 ## Release 1.0 (production)
 Everything below is new relative to the original live image:
@@ -39,5 +44,6 @@ Everything below is new relative to the original live image:
 - **NullOS boot menu** (live and installed) with "NullOS (Live Mode)" and "Install NullOS" entries.
 - **Themes**: red (default), blue, green, black & white, each with its own wallpaper; **new login screen**; **Transparency** settings.
 - Fixes found in real use: output wrapping, the monitor flagging its own files, apt-lock waits for tool packs, lab leftovers, AppArmor complain-mode profiles no longer shown as a fault.
+- **Build resilience**: if Ubuntu publishes a kernel metapackage before all of its packages exist (the build then fails with `linux-modules-extra-... not installable`), the build pins the newest *complete* kernel of the same series (never a different HWE series) and records it in `nullos-<arch>.release.json` (`kernel`, `kernel_metapackage_installed`). When the archive is healthy nothing changes. If the metapackage was skipped, run `sudo apt install linux-image-generic` later to get automatic kernel updates.
 - Earlier fixes still in place: sound (dbus-user-session + rtkit), shutdown without waiting for ENTER, no busy cursor, screen never blanks. Run `ns-diag` and share ~/nullsec-diag.txt if anything misbehaves.
 - Touched existing files are listed in `docs/CHANGES-existing-files.patch`. `/etc/nftables.conf` is unchanged.

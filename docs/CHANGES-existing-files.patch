@@ -35,10 +35,10 @@ index 602231a..4be79bf 100644
 -          files: out/*.iso
 +          files: out/nullos-*
 diff --git a/README.md b/README.md
-index ca44e89..8ea3644 100644
+index ca44e89..5114b87 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,34 +1,43 @@
+@@ -1,34 +1,44 @@
 -# NullOS (v4)
 -Black, minimal security OS on Ubuntu 24.04 (Ubuntu's own kernel). amd64 + arm64. Default = tiling desktop (i3) with Hyprland-style gaps, borders, auto-dwindle tiling and a dropdown terminal. Floating mode (Openbox, title bars) is one click away.
 +# NullOS 1.0
@@ -104,13 +104,14 @@ index ca44e89..8ea3644 100644
 +- **NullOS boot menu** (live and installed) with "NullOS (Live Mode)" and "Install NullOS" entries.
 +- **Themes**: red (default), blue, green, black & white, each with its own wallpaper; **new login screen**; **Transparency** settings.
 +- Fixes found in real use: output wrapping, the monitor flagging its own files, apt-lock waits for tool packs, lab leftovers, AppArmor complain-mode profiles no longer shown as a fault.
++- **Build resilience**: if Ubuntu publishes a kernel metapackage before all of its packages exist (the build then fails with `linux-modules-extra-... not installable`), the build pins the newest *complete* kernel of the same series (never a different HWE series) and records it in `nullos-<arch>.release.json` (`kernel`, `kernel_metapackage_installed`). When the archive is healthy nothing changes. If the metapackage was skipped, run `sudo apt install linux-image-generic` later to get automatic kernel updates.
 +- Earlier fixes still in place: sound (dbus-user-session + rtkit), shutdown without waiting for ENTER, no busy cursor, screen never blanks. Run `ns-diag` and share ~/nullsec-diag.txt if anything misbehaves.
 +- Touched existing files are listed in `docs/CHANGES-existing-files.patch`. `/etc/nftables.conf` is unchanged.
 diff --git a/build-iso.sh b/build-iso.sh
-index 6514f3a..edfd54c 100755
+index 6514f3a..8812e1c 100755
 --- a/build-iso.sh
 +++ b/build-iso.sh
-@@ -33,7 +33,7 @@ printf '#!/bin/sh\nexit 101\n' > "$R/usr/sbin/policy-rc.d"; chmod +x "$R/usr/sbi
+@@ -33,9 +33,32 @@ printf '#!/bin/sh\nexit 101\n' > "$R/usr/sbin/policy-rc.d"; chmod +x "$R/usr/sbi
  echo "== 2/6 packages (names missing on this arch are skipped)"
  chroot "$R" apt-get update -qq
  : > "$W/pkgs.ok"
@@ -118,8 +119,33 @@ index 6514f3a..edfd54c 100755
 +for p in $(sed 's/#.*//' "$HERE/packages.txt"); do   # comments (#) are ignored
    if [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ]; then echo "$p" >> "$W/pkgs.ok"; else echo "skip (not available on $ARCH): $p"; fi
  done
++# --- kernel guard begin ---
++# Ubuntu sometimes publishes a new kernel metapackage before all of its binary packages exist (mirror lag, half-synced pockets).
++# linux-image-generic then depends on a kernel that cannot be installed and the whole build dies. Detect that and pin the newest
++# kernel whose image, modules AND modules-extra are all available (the newest complete kernel is what we would ship anyway).
++KERNEL_PINNED=""
++if grep -qx linux-image-generic "$W/pkgs.ok" && ! chroot "$R" apt-get -s install linux-image-generic >/dev/null 2>&1; then
++  echo "WARN: linux-image-generic is not installable right now (the Ubuntu archive is part-way through publishing a kernel)"
++  # stay in the SAME kernel series the metapackage points to (6.8.0-NNN); never jump to a different series such as an HWE 6.x kernel
++  series=$(chroot "$R" apt-cache policy linux-image-generic 2>/dev/null | awk '/Candidate/{print $2}'); series=${series%%-*}
++  [ -n "$series" ] && [ "$series" != "(none)" ] || { echo "FATAL: cannot determine the kernel series of linux-image-generic"; exit 1; }
++  for v in $(chroot "$R" apt-cache pkgnames linux-image- | sed -nE "s/^linux-image-(${series//./\\.}-[0-9]+)-generic\$/\\1/p" | sort -V -r); do
++    have=1
++    for p in "linux-image-$v-generic" "linux-modules-$v-generic" "linux-modules-extra-$v-generic"; do
++      [ -n "$(chroot "$R" apt-cache policy "$p" 2>/dev/null | awk '/Candidate/ && $2!="(none)"{print $2}')" ] || have=0
++    done
++    if [ $have = 1 ] && chroot "$R" apt-get -s install "linux-image-$v-generic" "linux-modules-$v-generic" "linux-modules-extra-$v-generic" >/dev/null 2>&1; then KERNEL_PINNED=$v; break; fi
++  done
++  [ -n "$KERNEL_PINNED" ] || { echo "FATAL: the archive has no complete generic kernel right now; try again later"; exit 1; }
++  sed -i '/^linux-image-generic$/d' "$W/pkgs.ok"
++  printf 'linux-image-%s-generic\nlinux-modules-%s-generic\nlinux-modules-extra-%s-generic\n' "$KERNEL_PINNED" "$KERNEL_PINNED" "$KERNEL_PINNED" >> "$W/pkgs.ok"
++  echo "kernel pinned to $KERNEL_PINNED (run 'sudo apt install linux-image-generic' later, once Ubuntu has finished publishing, to get automatic kernel updates)"
++fi
++# --- kernel guard end ---
  cp "$W/pkgs.ok" "$R/pkgs.txt"
-@@ -70,6 +70,14 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
+ chroot "$R" /bin/bash -c 'apt-get install -y --no-install-recommends $(tr "\n" " " < /pkgs.txt)'
+ 
+@@ -70,6 +93,14 @@ locale-gen en_US.UTF-8 >/dev/null; update-locale LANG=en_US.UTF-8
  # NOTE: a regular file, never a symlink to the binary (that overwrote lightdm once)
  rm -f /etc/X11/default-display-manager; echo /usr/sbin/lightdm > /etc/X11/default-display-manager
  systemctl enable lightdm NetworkManager nftables nullos-groups >/dev/null 2>&1 || true
@@ -134,7 +160,7 @@ index 6514f3a..edfd54c 100755
  systemctl set-default graphical.target
  for s in bluetooth cups cups-browsed avahi-daemon ModemManager apport snapd; do systemctl disable $s 2>/dev/null || true; systemctl mask $s 2>/dev/null || true; done
  sed -i 's/^NAME=.*/NAME="NullOS"/' /etc/os-release
-@@ -104,31 +112,58 @@ echo "== 4/6 sanity checks"
+@@ -104,31 +135,60 @@ echo "== 4/6 sanity checks"
  chroot "$R" /bin/bash -c 'lsinitramfs /boot/initrd.img-* | grep -q "scripts/casper"' || { echo "FATAL: casper missing from initramfs"; exit 1; }
  head -c4 "$R/usr/sbin/lightdm" | grep -q ELF || { echo "FATAL: /usr/sbin/lightdm is not a binary"; exit 1; }
  [ -f "$R/etc/X11/default-display-manager" ] && [ ! -L "$R/etc/X11/default-display-manager" ] || { echo "FATAL: default-display-manager"; exit 1; }
@@ -158,6 +184,8 @@ index 6514f3a..edfd54c 100755
 +# Release metadata must never be able to fail the build, so every step here is best-effort.
 +mkdir -p "$OUT"
 +INSTALLED_BYTES=$(du -sb --one-file-system "$R" 2>/dev/null | cut -f1 || true); INSTALLED_BYTES=${INSTALLED_BYTES:-0}
++KERNEL_VER=$(ls "$R"/boot/vmlinuz-* 2>/dev/null | sort -V | tail -1 | sed "s#.*/vmlinuz-##" || true); KERNEL_VER=${KERNEL_VER:-unknown}
++KERNEL_META=0; dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Status}' linux-image-generic 2>/dev/null | grep -q "install ok installed" && KERNEL_META=1 || true
 +dpkg-query --admindir="$R/var/lib/dpkg" -W -f='${Package}\t${Version}\n' 2>/dev/null | sort > "$OUT/nullos-$ARCH.packages.txt" || : > "$OUT/nullos-$ARCH.packages.txt"
  
  echo "== 5/6 compress"
@@ -195,14 +223,14 @@ index 6514f3a..edfd54c 100755
  menuentry "NullOS live (safe graphics)" {
      linux /casper/vmlinuz boot=casper nomodeset plymouth.enable=0 noprompt ---
      initrd /casper/initrd
-@@ -142,3 +177,26 @@ EOF
+@@ -142,3 +202,26 @@ EOF
  echo "== 6/6 iso"
  grub-mkrescue -o "$OUT/nullos-$ARCH.iso" "$ISO" -- -volid NULLOS
  ls -lh "$OUT/nullos-$ARCH.iso"
 +# release metadata: exact sizes are measured, never assumed (design target ~1.4 GB for the ISO)
 +ISO_BYTES=$(stat -c %s "$OUT/nullos-$ARCH.iso"); SQ_BYTES=$(stat -c %s "$ISO/casper/filesystem.squashfs")
 +( cd "$OUT" && sha256sum "nullos-$ARCH.iso" > "nullos-$ARCH.iso.sha256" )
-+INSTALLER=${INSTALLER:-0} ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
++INSTALLER=${INSTALLER:-0} KERNEL_VER=${KERNEL_VER:-unknown} KERNEL_META=${KERNEL_META:-0} ISO_BYTES=$ISO_BYTES SQ_BYTES=$SQ_BYTES INSTALLED_BYTES=$INSTALLED_BYTES ARCH=$ARCH OUT=$OUT HERE=$HERE python3 - <<'PY'
 +import hashlib, json, os, subprocess, time
 +out, arch = os.environ["OUT"], os.environ["ARCH"]
 +iso = os.path.join(out, "nullos-%s.iso" % arch)
@@ -216,7 +244,7 @@ index 6514f3a..edfd54c 100755
 +json.dump({"name": "NullOS", "version": "1.0", "arch": arch, "built_utc": time.strftime("%FT%TZ", time.gmtime()), "commit": commit,
 +           "iso_bytes": int(os.environ["ISO_BYTES"]), "iso_sha256": h.hexdigest(), "squashfs_bytes": int(os.environ["SQ_BYTES"]),
 +           "installed_bytes_uncompressed": int(os.environ["INSTALLED_BYTES"]), "package_count": pk, "design_target_iso_bytes": target,
-+           "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1",
++           "within_design_target": int(os.environ["ISO_BYTES"]) <= target, "graphical_installer": os.environ.get("INSTALLER") == "1", "kernel": os.environ.get("KERNEL_VER"), "kernel_metapackage_installed": os.environ.get("KERNEL_META") == "1",
 +           "offline": {"live_environment": "bundled applications work without internet", "offline_installation": "supported: the graphical installer copies the system from the ISO; no downloads",
 +                       "offline_operation": "base system and bundled tools yes; ns-pack, updates and online services need internet"}},
 +          open(os.path.join(out, "nullos-%s.release.json" % arch), "w"), indent=1)

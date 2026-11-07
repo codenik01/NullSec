@@ -1,0 +1,154 @@
+# NullOS tiling session (i3) - Hyprland-style: gaps, accent borders, auto-dwindle, dropdown terminal
+set $mod Mod4
+set $alt Mod1
+font pango:JetBrains Mono 10
+default_border pixel 3
+default_floating_border pixel 3
+gaps inner 8
+gaps outer 2
+focus_follows_mouse no
+mouse_warping none
+workspace_auto_back_and_forth yes
+floating_modifier Mod4
+floating_minimum_size 320 x 220
+
+# class                 border   bg       text     indicator child_border
+client.focused          #e5484d  #0a0a0a  #c8c8c8  #e5484d   #e5484d
+client.focused_inactive #262626  #0a0a0a  #5a5a5a  #262626   #262626
+client.unfocused        #262626  #0a0a0a  #5a5a5a  #262626   #262626
+client.urgent           #e5484d  #e5484d  #0a0a0a  #e5484d   #e5484d
+client.placeholder      #0a0a0a  #0a0a0a  #5a5a5a  #0a0a0a   #0a0a0a
+client.background       #0a0a0a
+
+set $ws1 "1:recon"
+set $ws2 "2:web"
+set $ws3 "3:exploit"
+set $ws4 "4:post"
+set $ws5 "5:notes"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+set $ws9 "9"
+
+# ---- keys (Super = main; Alt also works for the core set) ----
+bindsym $mod+Return exec --no-startup-id ns-term
+bindsym $alt+Return exec --no-startup-id ns-term
+bindsym $mod+d exec --no-startup-id rofi -show drun
+bindsym $alt+d exec --no-startup-id rofi -show drun
+bindsym $mod+space exec --no-startup-id ns-start
+bindsym $alt+space exec --no-startup-id ns-start
+bindsym $mod+t exec --no-startup-id ns-menu
+bindsym $alt+t exec --no-startup-id ns-menu
+bindsym $mod+s exec --no-startup-id ns-security
+bindsym $alt+s exec --no-startup-id ns-security
+bindsym $mod+n exec --no-startup-id ns-net
+bindsym $alt+n exec --no-startup-id ns-net
+bindsym $mod+b exec --no-startup-id ns-browser
+bindsym $alt+b exec --no-startup-id ns-browser
+bindsym $mod+e exec --no-startup-id thunar
+bindsym $alt+e exec --no-startup-id thunar
+bindsym $mod+q kill
+bindsym $alt+q kill
+bindsym $mod+v floating toggle
+bindsym $alt+v floating toggle
+bindsym $mod+f fullscreen toggle
+bindsym $alt+f fullscreen toggle
+bindsym $mod+Shift+e exec --no-startup-id ns-power
+bindsym $alt+Shift+e exec --no-startup-id ns-power
+bindsym $mod+Shift+d exec --no-startup-id rofi -show run
+bindsym $alt+Shift+d exec --no-startup-id rofi -show run
+bindsym $mod+w layout toggle tabbed split
+bindsym $mod+Shift+x exec --no-startup-id i3lock -c 0a0a0a
+bindsym $mod+Shift+s exec --no-startup-id xfce4-screenshooter -r
+bindsym $mod+minus scratchpad show
+bindsym $mod+Shift+minus move scratchpad
+bindsym $mod+Shift+t exec --no-startup-id ns-theme
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r restart
+bindsym $mod+Tab workspace next
+bindsym $mod+Shift+Tab workspace prev
+bindsym $mod+r mode "resize"
+bindsym $mod+Left focus left
+bindsym $mod+Right focus right
+bindsym $mod+Up focus up
+bindsym $mod+Down focus down
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Right move right
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+bindsym $mod+a focus parent
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+1 workspace $ws1
+bindsym $alt+1 workspace $ws1
+bindsym $mod+Shift+1 move container to workspace $ws1
+bindsym $alt+Shift+1 move container to workspace $ws1
+bindsym $mod+2 workspace $ws2
+bindsym $alt+2 workspace $ws2
+bindsym $mod+Shift+2 move container to workspace $ws2
+bindsym $alt+Shift+2 move container to workspace $ws2
+bindsym $mod+3 workspace $ws3
+bindsym $alt+3 workspace $ws3
+bindsym $mod+Shift+3 move container to workspace $ws3
+bindsym $alt+Shift+3 move container to workspace $ws3
+bindsym $mod+4 workspace $ws4
+bindsym $alt+4 workspace $ws4
+bindsym $mod+Shift+4 move container to workspace $ws4
+bindsym $alt+Shift+4 move container to workspace $ws4
+bindsym $mod+5 workspace $ws5
+bindsym $alt+5 workspace $ws5
+bindsym $mod+Shift+5 move container to workspace $ws5
+bindsym $alt+Shift+5 move container to workspace $ws5
+bindsym $mod+6 workspace $ws6
+bindsym $alt+6 workspace $ws6
+bindsym $mod+Shift+6 move container to workspace $ws6
+bindsym $alt+Shift+6 move container to workspace $ws6
+bindsym $mod+7 workspace $ws7
+bindsym $alt+7 workspace $ws7
+bindsym $mod+Shift+7 move container to workspace $ws7
+bindsym $alt+Shift+7 move container to workspace $ws7
+bindsym $mod+8 workspace $ws8
+bindsym $alt+8 workspace $ws8
+bindsym $mod+Shift+8 move container to workspace $ws8
+bindsym $alt+Shift+8 move container to workspace $ws8
+bindsym $mod+9 workspace $ws9
+bindsym $alt+9 workspace $ws9
+bindsym $mod+Shift+9 move container to workspace $ws9
+bindsym $alt+Shift+9 move container to workspace $ws9
+bindsym F12 exec --no-startup-id xfce4-terminal --drop-down
+bindsym F11 fullscreen toggle
+bindsym XF86AudioRaiseVolume exec --no-startup-id wpctl set-volume -l 1.2 @DEFAULT_AUDIO_SINK@ 5%+
+bindsym XF86AudioLowerVolume exec --no-startup-id wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+bindsym XF86AudioMute exec --no-startup-id wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+bindsym Print exec --no-startup-id xfce4-screenshooter -f
+
+mode "resize" {
+    bindsym Left resize shrink width 40 px or 4 ppt
+    bindsym Right resize grow width 40 px or 4 ppt
+    bindsym Up resize shrink height 40 px or 4 ppt
+    bindsym Down resize grow height 40 px or 4 ppt
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+
+# ---- dialogs and small tools float (centred) ----
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="task_dialog"] floating enable
+for_window [window_type="dialog"] floating enable
+for_window [window_type="utility"] floating enable
+for_window [class="(?i)(pavucontrol|xfce4-settings-manager|xfce4-appearance-settings|xfce4-display-settings|xfce4-keyboard-settings|xfce4-mouse-settings|xfce4-taskmanager|xfce4-power-manager-settings|xfce4-screenshooter|mate-calc|nm-connection-editor|engrampa|ristretto|file-roller|blueman-manager)"] floating enable, move position center
+for_window [class="(?i)(thunar|mousepad|atril)"] border pixel 3
+
+bar {
+    mode invisible
+    modifier none
+}
+
+exec_always --no-startup-id ns-autostart

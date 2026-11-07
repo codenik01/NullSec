@@ -1,0 +1,15 @@
+general { colors = true; interval = 2; color_good = "#c8c8c8"; color_bad = "#e5484d"; color_degraded = "#e5484d" }
+order += "ethernet _first_"
+order += "wireless _first_"
+order += "path_exists VPN"
+order += "cpu_usage"
+order += "memory"
+order += "disk /"
+order += "tztime local"
+ethernet _first_ { format_up = "eth %ip"; format_down = "eth -" }
+wireless _first_ { format_up = "wlan %essid %ip"; format_down = "wlan -" }
+path_exists VPN { path = "/proc/sys/net/ipv4/conf/tun0"; format = "vpn up"; format_down = "vpn -" }
+cpu_usage { format = "cpu %usage" }
+memory { format = "mem %used"; threshold_degraded = "1G"; format_degraded = "mem LOW" }
+disk "/" { format = "disk %avail" }
+tztime local { format = "%a %d %b %H:%M" }

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# ns-sandbox [--net] [--ro PATH]... [--rw PATH]... [--] command [args]
+# Runs a program inside a bubblewrap sandbox: read-only system, EMPTY private home, private /tmp,
+# no network (unless --net), clean environment (no inherited tokens), no access to ~/.ssh, cloud
+# credentials, browser profiles or documents unless you bind them in on purpose.
+# If the sandbox cannot be created it REFUSES to run: it never silently falls back to unconfined.
+usage() { sed -n '3,8p' "$0" | sed 's/^# \?//'; exit 2; }
+net=0; binds=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --net) net=1; shift;;
+    --ro|--rw) [ -e "${2:-}" ] || { echo "ns-sandbox: $1 needs an existing path" >&2; exit 2; }
+               p=$(realpath -- "$2"); case "$p" in /|/etc|/proc|/sys|/dev|/root) echo "ns-sandbox: refusing to bind $p" >&2; exit 2;; esac
+               [ "$1" = --ro ] && binds+=(--ro-bind "$p" "$p") || binds+=(--bind "$p" "$p"); shift 2;;
+    --) shift; break;;
+    -h|--help) usage;;
+    -*) echo "ns-sandbox: unknown option $1" >&2; usage;;
+    *) break;;
+  esac
+done
+[ $# -gt 0 ] || usage
+command -v bwrap >/dev/null 2>&1 || { echo "ns-sandbox: bubblewrap is not installed (ns-pack add apt:bubblewrap). Refusing to run unconfined." >&2; exit 125; }
+cmd=$(type -P -- "$1") || { echo "ns-sandbox: $1: command not found" >&2; exit 127; }; shift
+args=(--unshare-all --die-with-parent --new-session
+  --ro-bind /usr /usr
+  --proc /proc --dev /dev --tmpfs /tmp --dir /tmp/home
+  --clearenv --setenv PATH /usr/local/bin:/usr/bin:/bin --setenv HOME /tmp/home --setenv USER sandbox
+  --setenv LANG "${LANG:-C.UTF-8}" --setenv TERM "${TERM:-xterm}")
+for d in bin sbin lib lib32 lib64; do   # merged-/usr (symlinks) on Ubuntu 24.04; plain directories elsewhere
+  if [ -L "/$d" ]; then args+=(--symlink "$(readlink "/$d")" "/$d"); elif [ -d "/$d" ]; then args+=(--ro-bind "/$d" "/$d"); fi
+done
+for f in ld.so.cache ld.so.conf ld.so.conf.d passwd group nsswitch.conf localtime alternatives; do [ -e "/etc/$f" ] && args+=(--ro-bind "/etc/$f" "/etc/$f"); done
+if [ $net = 1 ]; then args+=(--share-net); for f in resolv.conf hosts ssl ca-certificates; do [ -e "/etc/$f" ] && args+=(--ro-bind "/etc/$f" "/etc/$f"); done; fi
+# the command itself may live outside /usr (e.g. /opt, /usr/local is inside /usr)
+case "$cmd" in /usr/*|/bin/*|/sbin/*) ;; *) d=$(dirname "$cmd"); args+=(--ro-bind "$d" "$d");; esac
+if ! bwrap "${args[@]}" "${binds[@]}" "$(type -P true)" 2>/tmp/.ns-sandbox-err.$$; then
+  echo "ns-sandbox: cannot create the sandbox, NOT running your command unconfined:" >&2; sed 's/^/  /' /tmp/.ns-sandbox-err.$$ >&2; rm -f /tmp/.ns-sandbox-err.$$; exit 125; fi
+rm -f /tmp/.ns-sandbox-err.$$
+exec bwrap "${args[@]}" "${binds[@]}" "$cmd" "$@"

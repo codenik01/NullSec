@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+unset DESKTOP_STARTUP_ID
+# ns-audio [fix|test|status] : unmute + set a sane volume on every sound card (VMs often start muted)
+fix() {
+  for c in $(aplay -l 2>/dev/null | awk '/^card/{gsub(":","",$2);print $2}' | sort -u); do
+    for ctl in Master Speaker Headphone PCM Front "Line Out" Playback; do amixer -q -c "$c" sset "$ctl" 85% unmute 2>/dev/null; done
+    amixer -q -c "$c" sset "Auto-Mute Mode" Disabled 2>/dev/null
+  done
+  wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 2>/dev/null; wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.8 2>/dev/null
+}
+case "${1:-fix}" in
+  fix) fix; echo "audio unmuted";;
+  test) fix; echo "playing a test tone..."; timeout 6 speaker-test -t sine -f 440 -l 1 >/dev/null 2>&1; echo done;;
+  status) echo "--- cards"; aplay -l 2>&1; echo "--- pipewire"; wpctl status 2>&1 | head -25;;
+esac
